@@ -112,6 +112,8 @@ public interface WindowManager extends ViewManager {
          * X position for this window.  With the default gravity it is ignored.
          * When using {@link Gravity#LEFT} or {@link Gravity#START} or {@link Gravity#RIGHT} or
          * {@link Gravity#END} it provides an offset from the given edge.
+         *
+         * Window的起始坐标，若设置了gravity则忽略
          */
         @ViewDebug.ExportedProperty
         public int x;
@@ -227,10 +229,13 @@ public interface WindowManager extends ViewManager {
             @ViewDebug.IntToString(from = TYPE_VOICE_INTERACTION, to = "TYPE_VOICE_INTERACTION"),
             @ViewDebug.IntToString(from = TYPE_VOICE_INTERACTION_STARTING, to = "TYPE_VOICE_INTERACTION_STARTING"),
         })
+        /**
+         * 窗口类型，分为三大类：应用程序Window，子Window和系统Window
+         */
         public int type;
 
         /**
-         * Start of window types that represent normal application windows.
+         * Start of window types that represent normal application windows.	
          */
         public static final int FIRST_APPLICATION_WINDOW = 1;
 
@@ -1027,6 +1032,9 @@ public interface WindowManager extends ViewManager {
             @ViewDebug.FlagToString(mask = FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS, equals = FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS,
                     name = "FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS")
         }, formatToHexString = true)
+        /**
+         * 窗口特征标记
+         */
         public int flags;
 
         /**
@@ -1324,6 +1332,8 @@ public interface WindowManager extends ViewManager {
          * Gravity.applyDisplay}.
          *
          * @see Gravity
+         *
+         * 窗口的对齐方式
          */
         public int gravity;
 

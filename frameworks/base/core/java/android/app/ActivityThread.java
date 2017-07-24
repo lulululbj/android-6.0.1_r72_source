@@ -2313,6 +2313,7 @@ public final class ActivityThread {
 
         Activity activity = null;
         try {
+			//通过反射机制常见一个Activity
             java.lang.ClassLoader cl = r.packageInfo.getClassLoader();
             activity = mInstrumentation.newActivity(
                     cl, component.getClassName(), r.intent);
@@ -2347,6 +2348,7 @@ public final class ActivityThread {
                 Configuration config = new Configuration(mCompatConfiguration);
                 if (DEBUG_CONFIGURATION) Slog.v(TAG, "Launching activity "
                         + r.activityInfo.name + " with config " + config);
+				//attach()方法中创建了Window对象
                 activity.attach(appContext, this, getInstrumentation(), r.token,
                         r.ident, app, r.intent, r.activityInfo, title, r.parent,
                         r.embeddedID, r.lastNonConfigurationInstances, config,
@@ -2363,6 +2365,7 @@ public final class ActivityThread {
                 }
 
                 activity.mCalled = false;
+				//调用Activity的onCreate()方法
                 if (r.isPersistable()) {
                     mInstrumentation.callActivityOnCreate(activity, r.state, r.persistentState);
                 } else {

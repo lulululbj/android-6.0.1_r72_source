@@ -35,6 +35,8 @@ public final class Message implements Parcelable {
      * what this message is about. Each {@link Handler} has its own name-space
      * for message codes, so you do not need to worry about yours conflicting
      * with other handlers.
+     *
+     * 用户定义的标识以区分不同的消息
      */
     public int what;
 
@@ -42,6 +44,8 @@ public final class Message implements Parcelable {
      * arg1 and arg2 are lower-cost alternatives to using
      * {@link #setData(Bundle) setData()} if you only need to store a
      * few integer values.
+     * 
+     * 传递一个整形数值时，使用 arg1 和 arg2 比 setData() 开销小
      */
     public int arg1; 
 
