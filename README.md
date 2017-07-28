@@ -5,7 +5,7 @@ Android6.0 源码解析
 
 ###  Android耗电统计
 
->	[BatteryStatsHelper.java](frameworks\base\core\java\com\android\internal\os\BatteryStatsHelper.java)
+>	[BatteryStatsHelper.java](frameworks/base/core/java/com/android/internal/os/BatteryStatsHelper.java)
 
    
    
