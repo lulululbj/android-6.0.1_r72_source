@@ -43,9 +43,9 @@ public class CpuPowerCalculator extends PowerCalculator {
                 totalTime += u.getTimeAtCpuSpeed(cluster, speed, statsType);
             }
         }
-        totalTime = Math.max(totalTime, 1);
+        totalTime = Math.max(totalTime, 1); //计算cpu总共运行的时间
 
-        double cpuPowerMaMs = 0;
+        double cpuPowerMaMs = 0; // 计算cpu的耗电量
         for (int cluster = 0; cluster < numClusters; cluster++) {
             final int speedsForCluster = mProfile.getNumSpeedStepsInCpuCluster(cluster);
             for (int speed = 0; speed < speedsForCluster; speed++) {
@@ -70,7 +70,7 @@ public class CpuPowerCalculator extends PowerCalculator {
 
         // Keep track of the package with highest drain.
         double highestDrain = 0;
-
+        // 追踪不同进程的耗电情况
         app.cpuFgTimeMs = 0;
         final ArrayMap<String, ? extends BatteryStats.Uid.Proc> processStats = u.getProcessStats();
         final int processStatsCount = processStats.size();
@@ -84,6 +84,7 @@ public class CpuPowerCalculator extends PowerCalculator {
 
             // Each App can have multiple packages and with multiple running processes.
             // Keep track of the package who's process has the highest drain.
+            // 跟踪耗电最大的进程
             if (app.packageWithHighestDrain == null ||
                     app.packageWithHighestDrain.startsWith("*")) {
                 highestDrain = costValue;

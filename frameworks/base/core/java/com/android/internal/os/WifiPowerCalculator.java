@@ -43,7 +43,7 @@ public class WifiPowerCalculator extends PowerCalculator {
                 statsType);
         final long txTime = u.getWifiControllerActivity(BatteryStats.CONTROLLER_TX_TIME, statsType);
         final long rxTime = u.getWifiControllerActivity(BatteryStats.CONTROLLER_RX_TIME, statsType);
-        app.wifiRunningTimeMs = idleTime + rxTime + txTime;
+        app.wifiRunningTimeMs = idleTime + rxTime + txTime; // 计算Wifi的时间
         app.wifiPowerMah =
                 ((idleTime * mIdleCurrentMa) + (txTime * mTxCurrentMa) + (rxTime * mRxCurrentMa))
                 / (1000*60*60);

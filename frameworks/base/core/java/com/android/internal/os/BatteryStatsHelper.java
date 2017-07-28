@@ -394,6 +394,8 @@ public final class BatteryStatsHelper {
         mBatteryUptime = mStats.getBatteryUptime(rawUptimeUs);
         mBatteryRealtime = mStats.getBatteryRealtime(rawRealtimeUs);
         mTypeBatteryUptime = mStats.computeBatteryUptime(rawUptimeUs, mStatsType);
+
+		//这里的mStatsType为BatteryStats.STATS_SINCE_CHARGED
         mTypeBatteryRealtime = mStats.computeBatteryRealtime(rawRealtimeUs, mStatsType);
         mBatteryTimeRemaining = mStats.computeBatteryTimeRemaining(rawRealtimeUs);
         mChargeTimeRemaining = mStats.computeChargeTimeRemaining(rawRealtimeUs);
@@ -487,13 +489,19 @@ public final class BatteryStatsHelper {
         }
     }
 
+    /**
+     * App耗电统计
+     */
     private void processAppUsage(SparseArray<UserHandle> asUsers) {
+        //判断是否统计所有用户的应用耗电统计,目前该参数为true
         final boolean forAllUsers = (asUsers.get(UserHandle.USER_ALL) != null);
-        mStatsPeriod = mTypeBatteryRealtime;
+        mStatsPeriod = mTypeBatteryRealtime;//耗电的统计时长
 
         BatterySipper osSipper = null;
+		//获取每个uid的统计信息
         final SparseArray<? extends Uid> uidStats = mStats.getUidStats();
         final int NU = uidStats.size();
+		//遍历每个uid的耗电情况
         for (int iu = 0; iu < NU; iu++) {
             final Uid u = uidStats.valueAt(iu);
             final BatterySipper app = new BatterySipper(BatterySipper.DrainType.APP, u, 0);
@@ -507,6 +515,7 @@ public final class BatteryStatsHelper {
             mCameraPowerCalculator.calculateApp(app, u, mRawRealtime, mRawUptime, mStatsType);
             mFlashlightPowerCalculator.calculateApp(app, u, mRawRealtime, mRawUptime, mStatsType);
 
+            // App的9项耗电累加
             final double totalPower = app.sumPower();
             if (DEBUG && totalPower != 0) {
                 Log.d(TAG, String.format("UID %d: total power=%s", u.getUid(),
@@ -516,15 +525,16 @@ public final class BatteryStatsHelper {
             // Add the app to the list if it is consuming power.
             if (totalPower != 0 || u.getUid() == 0) {
                 //
+                // 将app添加到app列表，Wifi，BluTooth等等，或者其他用户列表
                 // Add the app to the app list, WiFi, Bluetooth, etc, or into "Other Users" list.
                 //
                 final int uid = app.getUid();
                 final int userId = UserHandle.getUserId(uid);
-                if (uid == Process.WIFI_UID) {
+                if (uid == Process.WIFI_UID) { //uid为WIFI
                     mWifiSippers.add(app);
-                } else if (uid == Process.BLUETOOTH_UID) {
+                } else if (uid == Process.BLUETOOTH_UID) { //uid为BLUETOOTH
                     mBluetoothSippers.add(app);
-                } else if (!forAllUsers && asUsers.get(userId) == null
+                } else if (!forAllUsers && asUsers.get(userId) == null //forAllUsers 为true，目前不会进入该分支
                         && UserHandle.getAppId(uid) >= Process.FIRST_APPLICATION_UID) {
                     // We are told to just report this user's apps as one large entry.
                     List<BatterySipper> list = mUserSippers.get(userId);
@@ -534,11 +544,11 @@ public final class BatteryStatsHelper {
                     }
                     list.add(app);
                 } else {
-                    mUsageList.add(app);
+                    mUsageList.add(app); //将app耗电加入mUsageList
                 }
 
                 if (uid == 0) {
-                    osSipper = app;
+                    osSipper = app; //uid为0，root用户，代表系统耗电量
                 }
             }
         }
@@ -654,11 +664,14 @@ public final class BatteryStatsHelper {
             final int userId = mUserSippers.keyAt(i);
             BatterySipper bs = new BatterySipper(DrainType.USER, null, 0);
             bs.userId = userId;
-            aggregateSippers(bs, mUserSippers.valueAt(i), "User");
+            aggregateSippers(bs, mUserSippers.valueAt(i), "User"); // 将UserSippers的功耗都合入bs
             mUsageList.add(bs);
         }
     }
 
+    /**
+     * 硬件功耗
+     */
     private void processMiscUsage() {
         addUserUsage();
         addPhoneUsage();
@@ -667,6 +680,7 @@ public final class BatteryStatsHelper {
         addBluetoothUsage();
         addIdleUsage(); // Not including cellular idle power
         // Don't compute radio usage if it's a wifi-only device
+        // 对于只有wifi功能的设备，不计算radio usage
         if (!mWifiOnly) {
             addRadioUsage();
         }

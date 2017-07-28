@@ -33,6 +33,7 @@ public class FlashlightPowerCalculator extends PowerCalculator {
 
         // Calculate flashlight power usage.  Right now, this is based on the average power draw
         // of the flash unit when kept on over a short period of time.
+        // 和Camera计算方式类似，粗略估算
         final BatteryStats.Timer timer = u.getFlashlightTurnedOnTimer();
         if (timer != null) {
             final long totalTime = timer.getTotalTimeLocked(rawRealtimeUs, statsType) / 1000;

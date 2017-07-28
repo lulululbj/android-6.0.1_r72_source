@@ -41,6 +41,7 @@ public class WakelockPowerCalculator extends PowerCalculator {
 
             // Only care about partial wake locks since full wake locks
             // are canceled when the user turns the screen off.
+            // 只统计partial wake locks，因为当用户息屏时full wake locks被取消
             BatteryStats.Timer timer = wakelock.getWakeTime(BatteryStats.WAKE_TYPE_PARTIAL);
             if (timer != null) {
                 wakeLockTimeUs += timer.getTotalTimeLocked(rawRealtimeUs, statsType);
@@ -49,7 +50,7 @@ public class WakelockPowerCalculator extends PowerCalculator {
         app.wakeLockTimeMs = wakeLockTimeUs / 1000; // convert to millis
         mTotalAppWakelockTimeMs += app.wakeLockTimeMs;
 
-        // Add cost of holding a wake lock.
+        // Add cost of holding a wake lock. 加上唤醒功耗
         app.wakeLockPowerMah = (app.wakeLockTimeMs * mPowerWakelock) / (1000*60*60);
         if (DEBUG && app.wakeLockPowerMah != 0) {
             Log.d(TAG, "UID " + u.getUid() + ": wake " + app.wakeLockTimeMs

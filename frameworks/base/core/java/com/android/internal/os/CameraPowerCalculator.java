@@ -35,6 +35,7 @@ public class CameraPowerCalculator extends PowerCalculator {
 
         // Calculate camera power usage.  Right now, this is a (very) rough estimate based on the
         // average power usage for a typical camera application.
+        // Camera耗电是粗略估算，均值
         final BatteryStats.Timer timer = u.getCameraTurnedOnTimer();
         if (timer != null) {
             final long totalTime = timer.getTotalTimeLocked(rawRealtimeUs, statsType) / 1000;

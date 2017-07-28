@@ -43,13 +43,13 @@ public class SensorPowerCalculator extends PowerCalculator {
             final BatteryStats.Timer timer = sensor.getSensorTime();
             final long sensorTime = timer.getTotalTimeLocked(rawRealtimeUs, statsType) / 1000;
             switch (sensorHandle) {
-                case BatteryStats.Uid.Sensor.GPS:
+                case BatteryStats.Uid.Sensor.GPS: // uid为GPS
                     app.gpsTimeMs = sensorTime;
-                    app.gpsPowerMah = (app.gpsTimeMs * mGpsPowerOn) / (1000*60*60);
+                    app.gpsPowerMah = (app.gpsTimeMs * mGpsPowerOn) / (1000*60*60); // 计算GPS功耗
                     break;
                 default:
                     final int sensorsCount = mSensors.size();
-                    for (int i = 0; i < sensorsCount; i++) {
+                    for (int i = 0; i < sensorsCount; i++) { // 统计所有的Sensor情况	
                         final Sensor s = mSensors.get(i);
                         if (s.getHandle() == sensorHandle) {
                             app.sensorPowerMah += (sensorTime * s.getPower()) / (1000*60*60);
