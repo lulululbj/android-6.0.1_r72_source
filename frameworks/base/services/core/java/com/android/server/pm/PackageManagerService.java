@@ -1762,6 +1762,10 @@ public class PackageManagerService extends IPackageManager.Stub {
         }
     }
 
+    /**
+     * 初始化PMS对象，并注册到ServiceManager中
+     * Binder服务的常规注册流程
+     */
     public static PackageManagerService main(Context context, Installer installer,
             boolean factoryTest, boolean onlyCore) {
         PackageManagerService m = new PackageManagerService(context, installer,
@@ -1800,6 +1804,8 @@ public class PackageManagerService extends IPackageManager.Stub {
 
     public PackageManagerService(Context context, Installer installer,
             boolean factoryTest, boolean onlyCore) {
+
+		/** 阶段一：BOOT_PROGRESS_PMS_START **/	
         EventLog.writeEvent(EventLogTags.BOOT_PROGRESS_PMS_START,
                 SystemClock.uptimeMillis());
 
@@ -1810,9 +1816,11 @@ public class PackageManagerService extends IPackageManager.Stub {
         mContext = context;
         mFactoryTest = factoryTest;
         mOnlyCore = onlyCore;
+		// 对于eng版本延迟执行dexopt操作
         mLazyDexOpt = "eng".equals(SystemProperties.get("ro.build.type"));
         mMetrics = new DisplayMetrics();
         mSettings = new Settings(mPackages);
+		// 添加system，phone，log，nfc，bluetooth，shell六种shareUserId到mSettings
         mSettings.addSharedUserLPw("android.uid.system", Process.SYSTEM_UID,
                 ApplicationInfo.FLAG_SYSTEM, ApplicationInfo.PRIVATE_FLAG_PRIVILEGED);
         mSettings.addSharedUserLPw("android.uid.phone", RADIO_UID,
@@ -1829,9 +1837,13 @@ public class PackageManagerService extends IPackageManager.Stub {
         // TODO: add a property to control this?
         long dexOptLRUThresholdInMinutes;
         if (mLazyDexOpt) {
-            dexOptLRUThresholdInMinutes = 30; // only last 30 minutes of apps for eng builds.
+			// only last 30 minutes of apps for eng builds.
+			// 对于eng版本，只对30分钟内使用过的app进行dex优化
+            dexOptLRUThresholdInMinutes = 30; 
         } else {
-            dexOptLRUThresholdInMinutes = 7 * 24 * 60; // apps used in the 7 days for users.
+        // apps used in the 7 days for users.
+        // 否则，对一周内用户使用过的app进行dex优化
+            dexOptLRUThresholdInMinutes = 7 * 24 * 60; 
         }
         mDexOptLRUThresholdInMills = dexOptLRUThresholdInMinutes * 60 * 1000;
 
@@ -1852,15 +1864,17 @@ public class PackageManagerService extends IPackageManager.Stub {
             mSeparateProcesses = null;
         }
 
-        mInstaller = installer;
-        mPackageDexOptimizer = new PackageDexOptimizer(this);
-        mMoveCallbacks = new MoveCallbacks(FgThread.get().getLooper());
+        mInstaller = installer; // 保存Installer对象
+        mPackageDexOptimizer = new PackageDexOptimizer(this); // 用于dex优化
+        // 运行在"android.fg"线程的handler对象
+        mMoveCallbacks = new MoveCallbacks(FgThread.get().getLooper()); 
 
         mOnPermissionChangeListeners = new OnPermissionChangeListeners(
                 FgThread.get().getLooper());
 
         getDefaultDisplayMetrics(context, mMetrics);
 
+		// 获取系统配置信息
         SystemConfig systemConfig = SystemConfig.getInstance();
         mGlobalGids = systemConfig.getGlobalGids();
         mSystemPermissions = systemConfig.getSystemPermissions();
@@ -1869,12 +1883,14 @@ public class PackageManagerService extends IPackageManager.Stub {
         synchronized (mInstallLock) {
         // writer
         synchronized (mPackages) {
+        	// 创建名为"PackageManager"的handler线程
             mHandlerThread = new ServiceThread(TAG,
                     Process.THREAD_PRIORITY_BACKGROUND, true /*allowIo*/);
             mHandlerThread.start();
             mHandler = new PackageHandler(mHandlerThread.getLooper());
             Watchdog.getInstance().addThread(mHandler, WATCHDOG_TIMEOUT);
 
+			//创建文件目录
             File dataDir = Environment.getDataDirectory();
             mAppDataDir = new File(dataDir, "data");
             mAppInstallDir = new File(dataDir, "app");
@@ -1883,6 +1899,7 @@ public class PackageManagerService extends IPackageManager.Stub {
             mUserAppDataDir = new File(dataDir, "user");
             mDrmAppPrivateInstallDir = new File(dataDir, "app-private");
 
+			//创建用户管理服务
             sUserManager = new UserManagerService(context, this,
                     mInstallLock, mPackages);
 
@@ -1901,6 +1918,7 @@ public class PackageManagerService extends IPackageManager.Stub {
                 }
             }
 
+			//获取共享库
             ArrayMap<String, String> libConfig = systemConfig.getSharedLibraries();
             for (int i=0; i<libConfig.size(); i++) {
                 mSharedLibraries.put(libConfig.keyAt(i),
@@ -1921,6 +1939,8 @@ public class PackageManagerService extends IPackageManager.Stub {
                         customResolverActivity);
             }
 
+			/** 阶段二：BOOT_PROGRESS_PMS_SYSTEM_SCAN_START **/ 
+
             long startTime = SystemClock.uptimeMillis();
 
             EventLog.writeEvent(EventLogTags.BOOT_PROGRESS_PMS_SYSTEM_SCAN_START,
@@ -1930,6 +1950,7 @@ public class PackageManagerService extends IPackageManager.Stub {
             // scanning install directories.
             final int scanFlags = SCAN_NO_PATHS | SCAN_DEFER_DEX | SCAN_BOOTING | SCAN_INITIAL;
 
+			// 已经优化或者不需要优化的文件
             final ArraySet<String> alreadyDexOpted = new ArraySet<String>();
 
             /**
@@ -1940,6 +1961,7 @@ public class PackageManagerService extends IPackageManager.Stub {
             final String bootClassPath = System.getenv("BOOTCLASSPATH");
             final String systemServerClassPath = System.getenv("SYSTEMSERVERCLASSPATH");
 
+			// 将环境变量BOOTCLASSPATH所执行的文件加入alreadyDexOpted
             if (bootClassPath != null) {
                 String[] bootClassPathElements = splitString(bootClassPath, ':');
                 for (String element : bootClassPathElements) {
@@ -1949,6 +1971,7 @@ public class PackageManagerService extends IPackageManager.Stub {
                 Slog.w(TAG, "No BOOTCLASSPATH found!");
             }
 
+			// 将环境变量SYSTEMSERVERCLASSPATH所执行的文件加入alreadyDexOpted
             if (systemServerClassPath != null) {
                 String[] systemServerClassPathElements = splitString(systemServerClassPath, ':');
                 for (String element : systemServerClassPathElements) {
@@ -1964,6 +1987,7 @@ public class PackageManagerService extends IPackageManager.Stub {
                             allInstructionSets.toArray(new String[allInstructionSets.size()]));
 
             /**
+             * 此处的共享库由SystemConfig实例化过程赋值
              * Ensure all external libraries have had dexopt run on them.
              */
             if (mSharedLibraries.size() > 0) {
@@ -1982,6 +2006,7 @@ public class PackageManagerService extends IPackageManager.Stub {
                             int dexoptNeeded = DexFile.getDexOptNeeded(lib, null, dexCodeInstructionSet, false);
                             if (dexoptNeeded != DexFile.NO_DEXOPT_NEEDED) {
                                 alreadyDexOpted.add(lib);
+								// 执行dexopt操作
                                 mInstaller.dexopt(lib, Process.SYSTEM_UID, true, dexCodeInstructionSet, dexoptNeeded, false);
                             }
                         } catch (FileNotFoundException e) {
@@ -1994,12 +2019,15 @@ public class PackageManagerService extends IPackageManager.Stub {
                 }
             }
 
+            // /system/framework
             File frameworkDir = new File(Environment.getRootDirectory(), "framework");
 
+			// 将frameworks-res.jar加入alreadyDexopt中
             // Gross hack for now: we know this file doesn't contain any
             // code, so don't dexopt it to avoid the resulting log spew.
             alreadyDexOpted.add(frameworkDir.getPath() + "/framework-res.apk");
 
+			// 将core-libart.jar加入alreadyDexopt中
             // Gross hack for now: we know this file is only part of
             // the boot class path for art, so don't dexopt it to
             // avoid the resulting log spew.
@@ -2021,15 +2049,16 @@ public class PackageManagerService extends IPackageManager.Stub {
                         String path = libPath.getPath();
                         // Skip the file if we already did it.
                         if (alreadyDexOpted.contains(path)) {
-                            continue;
+                            continue; // 跳过已经优化或者无需优化的文件
                         }
                         // Skip the file if it is not a type we want to dexopt.
                         if (!path.endsWith(".apk") && !path.endsWith(".jar")) {
-                            continue;
+                            continue; // 跳过后缀不是 apk 或者 jar 的文件
                         }
                         try {
                             int dexoptNeeded = DexFile.getDexOptNeeded(path, null, dexCodeInstructionSet, false);
                             if (dexoptNeeded != DexFile.NO_DEXOPT_NEEDED) {
+								// 执行dexopt操作
                                 mInstaller.dexopt(path, Process.SYSTEM_UID, true, dexCodeInstructionSet, dexoptNeeded, false);
                             }
                         } catch (FileNotFoundException e) {
@@ -2059,6 +2088,7 @@ public class PackageManagerService extends IPackageManager.Stub {
                 }
             }
 
+			// 收集供应商包名：/vender/overlay
             // Collect vendor overlay packages.
             // (Do this before scanning any apps.)
             // For security and version matching reason, only consider
@@ -2067,23 +2097,27 @@ public class PackageManagerService extends IPackageManager.Stub {
             scanDirLI(vendorOverlayDir, PackageParser.PARSE_IS_SYSTEM
                     | PackageParser.PARSE_IS_SYSTEM_DIR, scanFlags | SCAN_TRUSTED_OVERLAY, 0);
 
+			// 收集包名：/system/framework
             // Find base frameworks (resource packages without code).
             scanDirLI(frameworkDir, PackageParser.PARSE_IS_SYSTEM
                     | PackageParser.PARSE_IS_SYSTEM_DIR
                     | PackageParser.PARSE_IS_PRIVILEGED,
                     scanFlags | SCAN_NO_DEX, 0);
 
+			// 收集私有的系统包名：/system/priv-app
             // Collected privileged system packages.
             final File privilegedAppDir = new File(Environment.getRootDirectory(), "priv-app");
             scanDirLI(privilegedAppDir, PackageParser.PARSE_IS_SYSTEM
                     | PackageParser.PARSE_IS_SYSTEM_DIR
                     | PackageParser.PARSE_IS_PRIVILEGED, scanFlags, 0);
 
+			// 收集一般的系统包名: /system/app
             // Collect ordinary system packages.
             final File systemAppDir = new File(Environment.getRootDirectory(), "app");
             scanDirLI(systemAppDir, PackageParser.PARSE_IS_SYSTEM
                     | PackageParser.PARSE_IS_SYSTEM_DIR, scanFlags, 0);
 
+			// 收集所有的供应商包名：/vender/app
             // Collect all vendor packages.
             File vendorAppDir = new File("/vendor/app");
             try {
@@ -2094,14 +2128,17 @@ public class PackageManagerService extends IPackageManager.Stub {
             scanDirLI(vendorAppDir, PackageParser.PARSE_IS_SYSTEM
                     | PackageParser.PARSE_IS_SYSTEM_DIR, scanFlags, 0);
 
+			// 收集所有OEM包名：/oem/app
             // Collect all OEM packages.
             final File oemAppDir = new File(Environment.getOemDirectory(), "app");
             scanDirLI(oemAppDir, PackageParser.PARSE_IS_SYSTEM
                     | PackageParser.PARSE_IS_SYSTEM_DIR, scanFlags, 0);
 
             if (DEBUG_UPGRADE) Log.v(TAG, "Running installd update commands");
+			// 移除文件
             mInstaller.moveFiles();
 
+			// 删除不存在的系统包
             // Prune any system packages that no longer exist.
             final List<String> possiblyDeletedUpdatedSystemApps = new ArrayList<String>();
             if (!mOnlyCore) {
@@ -2156,6 +2193,7 @@ public class PackageManagerService extends IPackageManager.Stub {
                 }
             }
 
+			//清理所有安装不完整的包
             //look for any incomplete package installations
             ArrayList<PackageSetting> deletePkgsList = mSettings.getListOfIncompleteInstallPackagesLPr();
             //clean up list
@@ -2163,9 +2201,10 @@ public class PackageManagerService extends IPackageManager.Stub {
                 //clean up here
                 cleanupInstallFailedPackage(deletePkgsList.get(i));
             }
-            //delete tmp files
+            //delete tmp files 删除临时文件
             deleteTempPackageFiles();
 
+			// 移除不相干包中的共享userId
             // Remove any shared userIDs that have no associated packages
             mSettings.pruneSharedUsersLPw();
 

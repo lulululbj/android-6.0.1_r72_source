@@ -153,6 +153,7 @@ public class SystemConfig {
     }
 
     SystemConfig() {
+    	// 获取权限目录（解析指定目录下的所有xml文件）
         // Read configuration from system
         readPermissions(Environment.buildPath(
                 Environment.getRootDirectory(), "etc", "sysconfig"), false);

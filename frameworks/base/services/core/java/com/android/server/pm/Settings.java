@@ -354,14 +354,14 @@ final class Settings {
                 FileUtils.S_IRWXU|FileUtils.S_IRWXG
                 |FileUtils.S_IROTH|FileUtils.S_IXOTH,
                 -1, -1);
-        mSettingsFilename = new File(mSystemDir, "packages.xml");
-        mBackupSettingsFilename = new File(mSystemDir, "packages-backup.xml");
-        mPackageListFilename = new File(mSystemDir, "packages.list");
+        mSettingsFilename = new File(mSystemDir, "packages.xml"); //记录所有安装app的信息
+        mBackupSettingsFilename = new File(mSystemDir, "packages-backup.xml"); //备份文件
+        mPackageListFilename = new File(mSystemDir, "packages.list"); //记录应用的数据信息
         FileUtils.setPermissions(mPackageListFilename, 0640, SYSTEM_UID, PACKAGE_INFO_GID);
 
         // Deprecated: Needed for migration
-        mStoppedPackagesFilename = new File(mSystemDir, "packages-stopped.xml");
-        mBackupStoppedPackagesFilename = new File(mSystemDir, "packages-stopped-backup.xml");
+        mStoppedPackagesFilename = new File(mSystemDir, "packages-stopped.xml"); //记录系统被强制停止的文件
+        mBackupStoppedPackagesFilename = new File(mSystemDir, "packages-stopped-backup.xml"); //备份文件
     }
 
     PackageSetting getPackageLPw(PackageParser.Package pkg, PackageSetting origPackage,

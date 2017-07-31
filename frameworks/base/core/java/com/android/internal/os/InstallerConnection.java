@@ -97,6 +97,7 @@ public class InstallerConnection {
                 false, false, null, bootComplete);
     }
 
+	// 通过socket发送给installd守护进程来执行相应的dexopt操作
     public int dexopt(String apkPath, int uid, boolean isPublic, String pkgName,
             String instructionSet, int dexoptNeeded, boolean vmSafeMode,
             boolean debuggable, String outputPath, boolean bootComplete) {

@@ -352,6 +352,7 @@ public final class SystemServer {
         mSystemServiceManager.startBootPhase(SystemService.PHASE_WAIT_FOR_DEFAULT_DISPLAY);
 
         // Only run "core" apps if we're encrypting the device.
+        // 设备处于加密状态仅解析核心应用
         String cryptState = SystemProperties.get("vold.decrypt");
         if (ENCRYPTING_STATE.equals(cryptState)) {
             Slog.w(TAG, "Detected encryption in progress - only parsing core apps");
@@ -363,6 +364,7 @@ public final class SystemServer {
 
         // Start the package manager.
         Slog.i(TAG, "Package Manager");
+		// 创建PMS对象
         mPackageManagerService = PackageManagerService.main(mSystemContext, installer,
                 mFactoryTestMode != FactoryTest.FACTORY_TEST_OFF, mOnlyCore);
         mFirstBoot = mPackageManagerService.isFirstBoot();
