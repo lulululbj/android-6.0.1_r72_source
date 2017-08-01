@@ -2208,11 +2208,13 @@ public class PackageManagerService extends IPackageManager.Stub {
             // Remove any shared userIDs that have no associated packages
             mSettings.pruneSharedUsersLPw();
 
-            if (!mOnlyCore) {
+            if (!mOnlyCore) { // 处理非系统app
+            	// 阶段三： PMS_DATA_SCAN_START
                 EventLog.writeEvent(EventLogTags.BOOT_PROGRESS_PMS_DATA_SCAN_START,
                         SystemClock.uptimeMillis());
+				// 收集 /data/app 包名
                 scanDirLI(mAppInstallDir, 0, scanFlags | SCAN_REQUIRE_KNOWN, 0);
-
+				// 收集 /data/app-private 包名
                 scanDirLI(mDrmAppPrivateInstallDir, PackageParser.PARSE_FORWARD_LOCK,
                         scanFlags | SCAN_REQUIRE_KNOWN, 0);
 
@@ -2306,6 +2308,7 @@ public class PackageManagerService extends IPackageManager.Stub {
             // read and update their last usage times.
             mPackageUsage.readLP();
 
+			/****  阶段四：BOOT_PROGRESS_PMS_SCAN_END       ****/
             EventLog.writeEvent(EventLogTags.BOOT_PROGRESS_PMS_SCAN_END,
                     SystemClock.uptimeMillis());
             Slog.i(TAG, "Time to scan packages: "
@@ -2324,6 +2327,7 @@ public class PackageManagerService extends IPackageManager.Stub {
                         + mSdkVersion + "; regranting permissions for internal storage");
                 updateFlags |= UPDATE_PERMISSIONS_REPLACE_PKG | UPDATE_PERMISSIONS_REPLACE_ALL;
             }
+			// SDK版本不一致时，需要更新权限
             updatePermissionsLPw(null, null, StorageManager.UUID_PRIVATE_INTERNAL, updateFlags);
             ver.sdkVersion = mSdkVersion;
 
@@ -2340,6 +2344,7 @@ public class PackageManagerService extends IPackageManager.Stub {
 
             // If this is first boot after an OTA, and a normal boot, then
             // we need to clear code cache directories.
+            // 当这是ota之后的首次启动（一次正常的启动），我们需要清除目录的缓存代码
             if (mIsUpgrade && !onlyCore) {
                 Slog.i(TAG, "Build fingerprint changed; clearing code caches");
                 for (int i = 0; i < mSettings.mPackages.size(); i++) {
@@ -2360,15 +2365,18 @@ public class PackageManagerService extends IPackageManager.Stub {
             // All the changes are done during package scanning.
             ver.databaseVersion = Settings.CURRENT_DATABASE_VERSION;
 
-            // can downgrade to reader
+            // can downgrade to reader 信息写回packages.xml文件		
             mSettings.writeLPr();
 
+
+			/****  阶段五：BOOT_PROGRESS_PMS_READY       ****/
             EventLog.writeEvent(EventLogTags.BOOT_PROGRESS_PMS_READY,
                     SystemClock.uptimeMillis());
 
             mRequiredVerifierPackage = getRequiredVerifierLPr();
             mRequiredInstallerPackage = getRequiredInstallerLPr();
 
+			// 初始化PackageInstallerService
             mInstallerService = new PackageInstallerService(context, this);
 
             mIntentFilterVerifierComponent = getIntentFilterVerifierComponentNameLPr();
@@ -6061,6 +6069,8 @@ public class PackageManagerService extends IPackageManager.Stub {
 
     @Override
     public void performBootDexOpt() {
+
+		// 确保只有system或者root uid有权限执行这个方法
         enforceSystemOrRoot("Only the system can request dexopt be performed");
 
         // Before everything else, see whether we need to fstrim.

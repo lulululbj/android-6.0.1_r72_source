@@ -204,6 +204,7 @@ public class PackageInstallerService extends IPackageInstaller.Stub {
         mContext = context;
         mPm = pm;
 
+		//创建名为”PackageInstaller“的Handler线程
         mInstallThread = new HandlerThread(TAG);
         mInstallThread.start();
 
