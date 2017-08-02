@@ -1,4 +1,6 @@
 Makefile
+abi/
+bionic/
 art/
 bootable/
 build/
