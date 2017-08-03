@@ -1811,7 +1811,8 @@ public final class ActivityThread {
                 // Caching not supported across users
                 ref = null;
             } else if (includeCode) {
-                ref = mPackages.get(aInfo.packageName);
+                // 从mPackages中查询，mPackages记录了每一个包名对应的LoadedApk对象的弱引用
+                ref = mPackages.get(aInfo.packageName); 
             } else {
                 ref = mResourcePackages.get(aInfo.packageName);
             }
@@ -1824,6 +1825,7 @@ public final class ActivityThread {
                         + " (in " + (mBoundApplication != null
                                 ? mBoundApplication.processName : null)
                         + ")");
+				// 创建LoadedApk，
                 packageInfo =
                     new LoadedApk(this, aInfo, compatInfo, baseLoader,
                             securityViolation, includeCode &&
@@ -1837,6 +1839,7 @@ public final class ActivityThread {
                 if (differentUser) {
                     // Caching not supported across users
                 } else if (includeCode) {
+                    // 将新创建的LoadedApk加入mPackages
                     mPackages.put(aInfo.packageName,
                             new WeakReference<LoadedApk>(packageInfo));
                 } else {
@@ -2295,10 +2298,12 @@ public final class ActivityThread {
 
         ActivityInfo aInfo = r.activityInfo;
         if (r.packageInfo == null) {
+			// 1.创建LoadedApk对象
             r.packageInfo = getPackageInfo(aInfo.applicationInfo, r.compatInfo,
                     Context.CONTEXT_INCLUDE_CODE);
         }
 
+		// Component初始化
         ComponentName component = r.intent.getComponent();
         if (component == null) {
             component = r.intent.resolveActivity(
@@ -2313,7 +2318,7 @@ public final class ActivityThread {
 
         Activity activity = null;
         try {
-			//通过反射机制常见一个Activity
+			// 2.通过反射机制创建一个Activity
             java.lang.ClassLoader cl = r.packageInfo.getClassLoader();
             activity = mInstrumentation.newActivity(
                     cl, component.getClassName(), r.intent);
@@ -2332,6 +2337,7 @@ public final class ActivityThread {
         }
 
         try {
+			// 3.创建Application对象
             Application app = r.packageInfo.makeApplication(false, mInstrumentation);
 
             if (localLOGV) Slog.v(TAG, "Performing launch of " + r);
@@ -2343,12 +2349,14 @@ public final class ActivityThread {
                     + ", dir=" + r.packageInfo.getAppDir());
 
             if (activity != null) {
+				// 4.创建ContextImpl对象
                 Context appContext = createBaseContextForActivity(r, activity);
                 CharSequence title = r.activityInfo.loadLabel(appContext.getPackageManager());
                 Configuration config = new Configuration(mCompatConfiguration);
                 if (DEBUG_CONFIGURATION) Slog.v(TAG, "Launching activity "
                         + r.activityInfo.name + " with config " + config);
 				//attach()方法中创建了Window对象
+				// 5.将Applicaiton/ContextImpl都attach到Activity对象
                 activity.attach(appContext, this, getInstrumentation(), r.token,
                         r.ident, app, r.intent, r.activityInfo, title, r.parent,
                         r.embeddedID, r.lastNonConfigurationInstances, config,
@@ -2365,7 +2373,7 @@ public final class ActivityThread {
                 }
 
                 activity.mCalled = false;
-				//调用Activity的onCreate()方法
+				// 6.执行回调onCreate()方法
                 if (r.isPersistable()) {
                     mInstrumentation.callActivityOnCreate(activity, r.state, r.persistentState);
                 } else {
@@ -2379,10 +2387,11 @@ public final class ActivityThread {
                 r.activity = activity;
                 r.stopped = true;
                 if (!r.activity.mFinished) {
-                    activity.performStart();
+                    activity.performStart(); // 执行回调onStart()
                     r.stopped = false;
                 }
                 if (!r.activity.mFinished) {
+					// 执行回到onRestoreInstanceState()
                     if (r.isPersistable()) {
                         if (r.state != null || r.persistentState != null) {
                             mInstrumentation.callActivityOnRestoreInstanceState(activity, r.state,
@@ -2683,6 +2692,7 @@ public final class ActivityThread {
         return sCurrentBroadcastIntent.get();
     }
 
+	//这里仅针对静态广播接收者
     private void handleReceiver(ReceiverData data) {
         // If we are getting ready to gc after going to the background, well
         // we are back active so skip it.
@@ -2690,11 +2700,13 @@ public final class ActivityThread {
 
         String component = data.intent.getComponent().getClassName();
 
+		// 1.创建LoadedApk对象
         LoadedApk packageInfo = getPackageInfoNoCheck(
                 data.info.applicationInfo, data.compatInfo);
 
         IActivityManager mgr = ActivityManagerNative.getDefault();
 
+		// 2.创建BroadcastReceiver对象
         BroadcastReceiver receiver;
         try {
             java.lang.ClassLoader cl = packageInfo.getClassLoader();
@@ -2712,6 +2724,8 @@ public final class ActivityThread {
         }
 
         try {
+			
+		    // 3.创建Application对象
             Application app = packageInfo.makeApplication(false, mInstrumentation);
 
             if (localLOGV) Slog.v(
@@ -2721,10 +2735,12 @@ public final class ActivityThread {
                 + ", pkg=" + packageInfo.getPackageName()
                 + ", comp=" + data.intent.getComponent().toShortString()
                 + ", dir=" + packageInfo.getAppDir());
-
+			
+		    // 4.创建ContextImpl对象
             ContextImpl context = (ContextImpl)app.getBaseContext();
             sCurrentBroadcastIntent.set(data.intent);
             receiver.setPendingResult(data);
+			// 5.执行onReceive()回调
             receiver.onReceive(context.getReceiverRestrictedContext(),
                     data.intent);
         } catch (Exception e) {
@@ -2854,11 +2870,13 @@ public final class ActivityThread {
         // we are back active so skip it.
         unscheduleGcIdler();
 
+		// 1.创建LoadedApk对象
         LoadedApk packageInfo = getPackageInfoNoCheck(
                 data.info.applicationInfo, data.compatInfo);
         Service service = null;
         try {
             java.lang.ClassLoader cl = packageInfo.getClassLoader();
+			// 2.创建Service对象
             service = (Service) cl.loadClass(data.info.name).newInstance();
         } catch (Exception e) {
             if (!mInstrumentation.onException(service, e)) {
@@ -2871,12 +2889,18 @@ public final class ActivityThread {
         try {
             if (localLOGV) Slog.v(TAG, "Creating service " + data.info.name);
 
+			// 3.创建ContextImpl对象
             ContextImpl context = ContextImpl.createAppContext(this, packageInfo);
             context.setOuterContext(service);
 
+			// 4.创建Applicaiton对象
             Application app = packageInfo.makeApplication(false, mInstrumentation);
+
+			// 5.将Applicaiton/ContextImpl都attach到service对象
             service.attach(context, this, data.info.name, data.token, app,
                     ActivityManagerNative.getDefault());
+
+			// 6.执行onCreate()回调
             service.onCreate();
             mServices.put(data.token, service);
             try {
@@ -4493,6 +4517,7 @@ public final class ActivityThread {
         mCurDefaultDisplayDpi = data.config.densityDpi;
         applyCompatConfiguration(mCurDefaultDisplayDpi);
 
+		// 1: 创建LoadedApk对象
         data.info = getPackageInfoNoCheck(data.appInfo, data.compatInfo);
 
         /**
@@ -4505,6 +4530,7 @@ public final class ActivityThread {
         }
         updateDefaultDensity();
 
+		// 2: 创建ContextImpl对象
         final ContextImpl appContext = ContextImpl.createAppContext(this, data.info);
         if (!Process.isIsolated()) {
             final File cacheDir = appContext.getCacheDir();
@@ -4662,6 +4688,7 @@ public final class ActivityThread {
             }
 
         } else {
+            // 3: 创建Instrumentation对象
             mInstrumentation = new Instrumentation();
         }
 
@@ -4680,6 +4707,7 @@ public final class ActivityThread {
         try {
             // If the app is being launched for full backup or restore, bring it up in
             // a restricted environment with the base application class.
+            // 4: 创建Application对象
             Application app = data.info.makeApplication(data.restrictedBackupMode, null);
             mInitialApplication = app;
 
@@ -4688,6 +4716,7 @@ public final class ActivityThread {
             if (!data.restrictedBackupMode) {
                 List<ProviderInfo> providers = data.providers;
                 if (providers != null) {
+					// 5.安装Providers
                     installContentProviders(app, providers);
                     // For process that contains content providers, we want to
                     // ensure that the JIT is enabled "at some point".
@@ -4707,6 +4736,8 @@ public final class ActivityThread {
             }
 
             try {
+				
+			    // 6.执行Application.onCreate()回调
                 mInstrumentation.callApplicationOnCreate(app);
             } catch (Exception e) {
                 if (!mInstrumentation.onException(app, e)) {
@@ -5126,6 +5157,8 @@ public final class ActivityThread {
                 c = mInitialApplication;
             } else {
                 try {
+					
+				    // 1 && 2: 创建LoadedApk和ContextImpl对象
                     c = context.createPackageContext(ai.packageName,
                             Context.CONTEXT_INCLUDE_CODE);
                 } catch (PackageManager.NameNotFoundException e) {
@@ -5140,6 +5173,7 @@ public final class ActivityThread {
                 return null;
             }
             try {
+				// 3.创建ContentProvider对象
                 final java.lang.ClassLoader cl = c.getClassLoader();
                 localProvider = (ContentProvider)cl.
                     loadClass(info.name).newInstance();
@@ -5153,6 +5187,8 @@ public final class ActivityThread {
                 if (DEBUG_PROVIDER) Slog.v(
                     TAG, "Instantiating local provider " + info.name);
                 // XXX Need to create the correct context for this provider.
+                // 4: ContextImpl都attach到ContentProvider对象 [见小节4.4]
+                // 5: 并执行回调onCreate
                 localProvider.attachInfo(c, info);
             } catch (java.lang.Exception e) {
                 if (!mInstrumentation.onException(null, e)) {

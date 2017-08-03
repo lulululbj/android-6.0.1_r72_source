@@ -553,6 +553,8 @@ public final class LoadedApk {
 
     public Application makeApplication(boolean forceDefaultAppClass,
             Instrumentation instrumentation) {
+
+		// 保证一个LoadedApk对象只创建一个对应的Application对象
         if (mApplication != null) {
             return mApplication;
         }
@@ -569,7 +571,9 @@ public final class LoadedApk {
             if (!mPackageName.equals("android")) {
                 initializeJavaContextClassLoader();
             }
+			// 创建ContextImpl对象
             ContextImpl appContext = ContextImpl.createAppContext(mActivityThread, this);
+			// 创建Application对象，并将appContext attach到新创建的Application上
             app = mActivityThread.mInstrumentation.newApplication(
                     cl, appClass, appContext);
             appContext.setOuterContext(app);

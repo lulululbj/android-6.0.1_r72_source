@@ -6185,6 +6185,8 @@ public class Activity extends ContextThemeWrapper
             CharSequence title, Activity parent, String id,
             NonConfigurationInstances lastNonConfigurationInstances,
             Configuration config, String referrer, IVoiceInteractor voiceInteractor) {
+
+		// 调用父类方法，赋值给ContextWrapper.mBase
         attachBaseContext(context);
 
         mFragments.attachHost(null /*parent*/);

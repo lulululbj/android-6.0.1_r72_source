@@ -701,6 +701,8 @@ public abstract class Service extends ContextWrapper implements ComponentCallbac
             Context context,
             ActivityThread thread, String className, IBinder token,
             Application application, Object activityManager) {
+
+	    // 调用父类方法，赋值给ContextWrapper.mBase
         attachBaseContext(context);
         mThread = thread;           // NOTE:  unused - remove?
         mClassName = className;

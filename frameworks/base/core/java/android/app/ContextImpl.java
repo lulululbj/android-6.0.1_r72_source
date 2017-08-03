@@ -1805,10 +1805,10 @@ class ContextImpl extends Context {
     private ContextImpl(ContextImpl container, ActivityThread mainThread,
             LoadedApk packageInfo, IBinder activityToken, UserHandle user, boolean restricted,
             Display display, Configuration overrideConfiguration, int createDisplayWithId) {
-        mOuterContext = this;
 
-        mMainThread = mainThread;
-        mActivityToken = activityToken;
+		mOuterContext = this; //ContextImpl对象
+        mMainThread = mainThread; //ActivityThread赋值
+        mActivityToken = activityToken; 
         mRestricted = restricted;
 
         if (user == null) {
@@ -1816,7 +1816,7 @@ class ContextImpl extends Context {
         }
         mUser = user;
 
-        mPackageInfo = packageInfo;
+        mPackageInfo = packageInfo; // LoadedApk赋值
         mResourcesManager = ResourcesManager.getInstance();
 
         final int displayId = (createDisplayWithId != Display.INVALID_DISPLAY)

@@ -1731,6 +1731,8 @@ public abstract class ContentProvider implements ComponentCallbacks2 {
          * this to us clients can't change it.
          */
         if (mContext == null) {
+			
+        	//将新创建ContextImpl对象保存到ContentProvider对象的成员变量mContext
             mContext = context;
             if (context != null) {
                 mTransport.mAppOpsManager = (AppOpsManager) context.getSystemService(
