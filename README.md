@@ -11,5 +11,8 @@ Android6.0 源码解析
 	
 >	[power_profile.xml](frameworks/base/core/res/res/xml/power_profile.xml)
 
+###  Android APK安装过程
+
+>   [PackageManagerService.java](frameworks/base/services/core/java/com/android/server/pm/PackageManagerService.java)
    
    

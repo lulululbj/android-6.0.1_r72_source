@@ -6075,20 +6075,22 @@ public class PackageManagerService extends IPackageManager.Stub {
 
         // Before everything else, see whether we need to fstrim.
         try {
+			// 运行在同一个进程，此处拿到的时MountService的服务端
             IMountService ms = PackageHelper.getMountService();
             if (ms != null) {
                 final boolean isUpgrade = isUpgrade();
-                boolean doTrim = isUpgrade;
+                boolean doTrim = isUpgrade; // 处于更新状态则执行doTrim
                 if (doTrim) {
                     Slog.w(TAG, "Running disk maintenance immediately due to system update");
                 } else {
+                	// interval 的默认值是3天
                     final long interval = android.provider.Settings.Global.getLong(
                             mContext.getContentResolver(),
                             android.provider.Settings.Global.FSTRIM_MANDATORY_INTERVAL,
                             DEFAULT_MANDATORY_FSTRIM_INTERVAL);
                     if (interval > 0) {
                         final long timeSinceLast = System.currentTimeMillis() - ms.lastMaintenance();
-                        if (timeSinceLast > interval) {
+                        if (timeSinceLast > interval) { // 距离上次fstrim超过3天，则执行fstrim
                             doTrim = true;
                             Slog.w(TAG, "No disk maintenance in " + timeSinceLast
                                     + "; running immediately");
@@ -6104,6 +6106,7 @@ public class PackageManagerService extends IPackageManager.Stub {
                         } catch (RemoteException e) {
                         }
                     }
+					//此处ms是指MountService，该过程发送消息H_FSTRIM给handler，然后再向vold发送fstrim命令
                     ms.runMaintenance();
                 }
             } else {
@@ -6115,6 +6118,7 @@ public class PackageManagerService extends IPackageManager.Stub {
 
         final ArraySet<PackageParser.Package> pkgs;
         synchronized (mPackages) {
+			// 清空延迟执行dexopt的app，获取dexopt的app集合
             pkgs = mPackageDexOptimizer.clearDeferredDexOptPackages();
         }
 
@@ -6125,7 +6129,7 @@ public class PackageManagerService extends IPackageManager.Stub {
             // Give priority to core apps.
             for (Iterator<PackageParser.Package> it = pkgs.iterator(); it.hasNext();) {
                 PackageParser.Package pkg = it.next();
-                if (pkg.coreApp) {
+                if (pkg.coreApp) { // 将核心app添加到sortedPkgs中
                     if (DEBUG_DEXOPT) {
                         Log.i(TAG, "Adding core app " + sortedPkgs.size() + ": " + pkg.packageName);
                     }
@@ -6134,6 +6138,7 @@ public class PackageManagerService extends IPackageManager.Stub {
                 }
             }
             // Give priority to system apps that listen for pre boot complete.
+            // 获取监听PRE_BOOT_COMPLETED的系统app集合
             Intent intent = new Intent(Intent.ACTION_PRE_BOOT_COMPLETED);
             ArraySet<String> pkgNames = getPackageNamesForIntent(intent);
             for (Iterator<PackageParser.Package> it = pkgs.iterator(); it.hasNext();) {
@@ -6147,8 +6152,10 @@ public class PackageManagerService extends IPackageManager.Stub {
                 }
             }
             // Filter out packages that aren't recently used.
+            // 获取pkgs中一周内使用过的app
             filterRecentlyUsedApps(pkgs);
             // Add all remaining apps.
+            // 将最近一周的app添加到sortedPkgs
             for (PackageParser.Package pkg : pkgs) {
                 if (DEBUG_DEXOPT) {
                     Log.i(TAG, "Adding app " + sortedPkgs.size() + ": " + pkg.packageName);
@@ -14755,14 +14762,16 @@ public class PackageManagerService extends IPackageManager.Stub {
                 }
             }
         }
-        sUserManager.systemReady();
+        sUserManager.systemReady(); // 多用户服务
 
         // If we upgraded grant all default permissions before kicking off.
+        // 升级所有已获取的默认权限
         for (int userId : grantPermissionsUserIds) {
             mDefaultPermissionPolicy.grantDefaultPermissions(userId);
         }
 
         // Kick off any messages waiting for system ready
+        // 开始一些等待系统准备就绪的消息
         if (mPostSystemReadyMessages != null) {
             for (Message msg : mPostSystemReadyMessages) {
                 msg.sendToTarget();
