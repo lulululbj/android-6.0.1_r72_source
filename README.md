@@ -14,5 +14,9 @@ Android6.0 源码解析
 ###  Android APK安装过程
 
 >   [PackageManagerService.java](frameworks/base/services/core/java/com/android/server/pm/PackageManagerService.java)
+
+### SharedPreferences解析
+
+> [SharedPreferencesImpl.java](frameworks/base/core/java/android/app/SharedPreferencesImpl.java)
    
    

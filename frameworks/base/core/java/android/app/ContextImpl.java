@@ -330,10 +330,13 @@ class ContextImpl extends Context {
         SharedPreferencesImpl sp;
         synchronized (ContextImpl.class) {
             if (sSharedPrefs == null) {
+				// 每个进程保存唯一份，锁保护
                 sSharedPrefs = new ArrayMap<String, ArrayMap<String, SharedPreferencesImpl>>();
             }
 
             final String packageName = getPackageName();
+
+			// 获取包名对应的 ArrayMap<String, SharedPreferencesImpl>
             ArrayMap<String, SharedPreferencesImpl> packagePrefs = sSharedPrefs.get(packageName);
             if (packagePrefs == null) {
                 packagePrefs = new ArrayMap<String, SharedPreferencesImpl>();
@@ -343,6 +346,7 @@ class ContextImpl extends Context {
             // At least one application in the world actually passes in a null
             // name.  This happened to work because when we generated the file name
             // we would stringify it to "null.xml".  Nice.
+            // name为null的话，命名为null.xml
             if (mPackageInfo.getApplicationInfo().targetSdkVersion <
                     Build.VERSION_CODES.KITKAT) {
                 if (name == null) {
@@ -350,19 +354,24 @@ class ContextImpl extends Context {
                 }
             }
 
+			// 获取sp文件名对应的SharedPreferencesImpl
             sp = packagePrefs.get(name);
             if (sp == null) {
+				// 对应sp为空时，创建文件，初始化sp
                 File prefsFile = getSharedPrefsFile(name);
                 sp = new SharedPreferencesImpl(prefsFile, mode);
                 packagePrefs.put(name, sp);
                 return sp;
             }
         }
+
+		// 
         if ((mode & Context.MODE_MULTI_PROCESS) != 0 ||
             getApplicationInfo().targetSdkVersion < android.os.Build.VERSION_CODES.HONEYCOMB) {
             // If somebody else (some other process) changed the prefs
             // file behind our back, we reload it.  This has been the
             // historical (if undocumented) behavior.
+            // 当另一个进程修改了这个文件，将会重新加载sp
             sp.startReloadIfChangedUnexpectedly();
         }
         return sp;
