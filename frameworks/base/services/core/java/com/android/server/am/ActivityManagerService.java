@@ -5351,12 +5351,14 @@ public final class ActivityManagerService extends ActivityManagerNative
             }
             ProcessRecord proc;
             synchronized (mPidsSelfLocked) {
+				// 查询的进程
                 proc = mPidsSelfLocked.get(Binder.getCallingPid());
             }
             if (proc != null) {
                 if (proc.pkgDeps == null) {
                     proc.pkgDeps = new ArraySet<String>(1);
                 }
+				// 将目标包名加入到调用者进程的pkgDeps
                 proc.pkgDeps.add(packageName);
             }
         }
@@ -6032,7 +6034,7 @@ public final class ActivityManagerService extends ActivityManagerNative
         ProcessRecord app;
         if (pid != MY_PID && pid >= 0) {
             synchronized (mPidsSelfLocked) {
-                app = mPidsSelfLocked.get(pid);
+                app = mPidsSelfLocked.get(pid); // 根据pid获取ProcessRecord
             }
         } else {
             app = null;

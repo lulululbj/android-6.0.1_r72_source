@@ -265,7 +265,7 @@ public final class SystemServer {
 
         // Start services.
         try {
-            startBootstrapServices();
+            startBootstrapServices(); // 启动引导服务
             startCoreServices();
             startOtherServices();
         } catch (Throwable ex) {

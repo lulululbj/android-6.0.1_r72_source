@@ -89,6 +89,7 @@ public class Application extends ContextWrapper implements ComponentCallbacks2 {
      * directly impacts the performance of starting the first activity,
      * service, or receiver in a process.
      * If you override this method, be sure to call super.onCreate().
+     * 空实现，一般由子类覆写
      */
     @CallSuper
     public void onCreate() {

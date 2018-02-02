@@ -178,6 +178,7 @@ public final class LoadedApk {
     /**
      * Create information about the system package.
      * Must call {@link #installSystemApplicationInfo} later.
+     * 只有一个参数的LoadedApk构造方法只有createSystemContext()过程才会创建
      */
     LoadedApk(ActivityThread activityThread) {
         mActivityThread = activityThread;
@@ -377,7 +378,7 @@ public final class LoadedApk {
                         mBaseClassLoader);
 
                 StrictMode.setThreadPolicy(oldPolicy);
-            } else {
+            } else {  // 包名等于“anroid""
                 if (mBaseClassLoader == null) {
                     mClassLoader = ClassLoader.getSystemClassLoader();
                 } else {
@@ -445,6 +446,7 @@ public final class LoadedApk {
             (sharable)
             ? new WarningContextClassLoader()
             : mClassLoader;
+		//设置当前线程的Context ClassLoader
         Thread.currentThread().setContextClassLoader(contextClassLoader);
     }
 

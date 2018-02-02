@@ -172,11 +172,12 @@ public final class ActivityThread {
     public static final int SERVICE_DONE_EXECUTING_START = 1;
     /** Type for IActivityManager.serviceDoneExecuting: done stopping (destroying) service */
     public static final int SERVICE_DONE_EXECUTING_STOP = 2;
-
+	// 记录系统进程的ContextImpl对象
     private ContextImpl mSystemContext;
 
     static IPackageManager sPackageManager;
 
+	// 创建ApplicationThread对象
     final ApplicationThread mAppThread = new ApplicationThread();
     final Looper mLooper = Looper.myLooper();
     final H mH = new H();
@@ -194,7 +195,8 @@ public final class ActivityThread {
     boolean mDensityCompatMode;
     Configuration mConfiguration;
     Configuration mCompatConfiguration;
-    Application mInitialApplication;
+	// 当前进程中首次初始化的Application对象
+    Application mInitialApplication; 
     final ArrayList<Application> mAllApplications
             = new ArrayList<Application>();
     // set of instantiated backup agents, keyed by package name
@@ -209,7 +211,8 @@ public final class ActivityThread {
     String mInstrumentedAppDir = null;
     String[] mInstrumentedSplitAppDirs = null;
     String mInstrumentedLibDir = null;
-    boolean mSystemThread = false;
+	// 标记当前进程是否为系统进程
+    boolean mSystemThread = false; // 
     boolean mJitEnabled = false;
     boolean mSomeActivitiesChanged = false;
 
@@ -1886,6 +1889,7 @@ public final class ActivityThread {
         return mBoundApplication.processName;
     }
 
+	// 单例模式
     public ContextImpl getSystemContext() {
         synchronized (this) {
             if (mSystemContext == null) {
@@ -4468,7 +4472,7 @@ public final class ActivityThread {
         }
 
         // send up app name; do this *before* waiting for debugger
-        Process.setArgV0(data.processName);
+        Process.setArgV0(data.processName); // 设置进程名
         android.ddm.DdmHandleAppName.setAppName(data.processName,
                                                 UserHandle.myUserId());
 
@@ -4707,7 +4711,7 @@ public final class ActivityThread {
         try {
             // If the app is being launched for full backup or restore, bring it up in
             // a restricted environment with the base application class.
-            // 4: 创建Application对象
+            // 4: 创建Application对象，此处的data.info是指LoadedApk，通过反射创建目标应用Application
             Application app = data.info.makeApplication(data.restrictedBackupMode, null);
             mInitialApplication = app;
 
@@ -5278,9 +5282,11 @@ public final class ActivityThread {
             });
             android.ddm.DdmHandleAppName.setAppName("<pre-initialized>",
                                                     UserHandle.myUserId());
+			//初始化RuntimeInit.mApplicationObject值
             RuntimeInit.setApplicationObject(mAppThread.asBinder());
             final IActivityManager mgr = ActivityManagerNative.getDefault();
             try {
+				// Binder调用AMS.attachApplication()
                 mgr.attachApplication(mAppThread);
             } catch (RemoteException ex) {
                 // Ignore
@@ -5306,7 +5312,7 @@ public final class ActivityThread {
                     }
                 }
             });
-        } else {
+        } else {  // system进程进入该分支
             // Don't set application object here -- if the system crashes,
             // we can't display an alert, we just want to die die die.
             android.ddm.DdmHandleAppName.setAppName("system_process",

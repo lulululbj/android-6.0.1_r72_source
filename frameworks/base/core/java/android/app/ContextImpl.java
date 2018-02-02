@@ -183,6 +183,7 @@ class ContextImpl extends Context {
     private static final String[] EMPTY_STRING_ARRAY = {};
 
     // The system service cache for the system services that are cached per-ContextImpl.
+    // 缓存binder服务
     final Object[] mServiceCache = SystemServiceRegistry.createServiceCache();
 
     static ContextImpl getImpl(Context context) {
@@ -1781,7 +1782,9 @@ class ContextImpl extends Context {
     }
 
     static ContextImpl createSystemContext(ActivityThread mainThread) {
+    	// 创建LoadedApk对象
         LoadedApk packageInfo = new LoadedApk(mainThread);
+		// 创建ContextImpl对象
         ContextImpl context = new ContextImpl(null, mainThread,
                 packageInfo, null, null, false, null, null, Display.INVALID_DISPLAY);
         context.mResources.updateConfiguration(context.mResourcesManager.getConfiguration(),

@@ -34,6 +34,8 @@ class ApplicationLoaders
          * this should be the "system" class loader; in practice we
          * don't use that and can happily (and more efficiently) use the
          * bootstrap class loader.
+         *
+         * 获取父类的类加载器
          */
         ClassLoader baseParent = ClassLoader.getSystemClassLoader().getParent();
 
@@ -54,6 +56,7 @@ class ApplicationLoaders
                 }
     
                 Trace.traceBegin(Trace.TRACE_TAG_ACTIVITY_MANAGER, zip);
+				// 创建PathClassLoader
                 PathClassLoader pathClassloader =
                     new PathClassLoader(zip, libPath, parent);
                 Trace.traceEnd(Trace.TRACE_TAG_ACTIVITY_MANAGER);
