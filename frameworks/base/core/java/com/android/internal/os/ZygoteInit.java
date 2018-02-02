@@ -117,8 +117,8 @@ public class ZygoteInit {
 
             try {
                 FileDescriptor fd = new FileDescriptor();
-                fd.setInt$(fileDesc);
-                sServerSocket = new LocalServerSocket(fd);
+                fd.setInt$(fileDesc); // 设置文件描述符
+                sServerSocket = new LocalServerSocket(fd); // 创建socket本地服务端
             } catch (IOException ex) {
                 throw new RuntimeException(
                         "Error binding to local socket '" + fileDesc + "'", ex);
@@ -179,13 +179,14 @@ public class ZygoteInit {
 
     static void preload() {
         Log.d(TAG, "begin preload");
-        preloadClasses();
-        preloadResources();
-        preloadOpenGL();
-        preloadSharedLibraries();
-        preloadTextResources();
+        preloadClasses(); // 预加载位于/system/etc/preloaded-classes文件中的类
+        preloadResources(); // 预加载资源，包括drawable和color资源
+        preloadOpenGL(); // 预加载OpenGL
+        preloadSharedLibraries(); // 预加载 'android','compiler-rt','jnigraphics'三个共享库
+        preloadTextResources(); // 预加载文本连接符资源
         // Ask the WebViewFactory to do any initialization that must run in the zygote process,
         // for memory sharing purposes.
+        // 仅用于zygote进程，用于共享内存的进程
         WebViewFactory.prepareWebViewInZygote();
         Log.d(TAG, "end preload");
     }
@@ -505,7 +506,9 @@ public class ZygoteInit {
             OsConstants.CAP_SYS_TIME,
             OsConstants.CAP_SYS_TTY_CONFIG
         );
-        /* Hardcoded command line to start the system server */
+        /* Hardcoded command line to start the system server
+		 * 准备参数
+         */
         String args[] = {
             "--setuid=1000",
             "--setgid=1000",
@@ -520,11 +523,14 @@ public class ZygoteInit {
         int pid;
 
         try {
+			// 用于解析参数，生成目标格式
             parsedArgs = new ZygoteConnection.Arguments(args);
             ZygoteConnection.applyDebuggerSystemProperty(parsedArgs);
             ZygoteConnection.applyInvokeWithSystemProperty(parsedArgs);
 
-            /* Request to fork the system server process */
+            /* Request to fork the system server process 
+ 			 * fork子进程，用于运行system_server
+			 */
             pid = Zygote.forkSystemServer(
                     parsedArgs.uid, parsedArgs.gid,
                     parsedArgs.gids,
@@ -536,12 +542,13 @@ public class ZygoteInit {
             throw new RuntimeException(ex);
         }
 
+		//进入子进程system_server
         /* For child process */
         if (pid == 0) {
             if (hasSecondZygote(abiList)) {
                 waitForSecondaryZygote(socketName);
             }
-
+			// 完成system_server进程剩余的工作
             handleSystemServerProcess(parsedArgs);
         }
 
@@ -564,6 +571,7 @@ public class ZygoteInit {
 
     public static void main(String argv[]) {
         try {
+			// 开启DDMS功能
             RuntimeInit.enableDdms();
             // Start profiling the zygote initialization.
             SamplingProfilerIntegration.start();
@@ -587,17 +595,19 @@ public class ZygoteInit {
                 throw new RuntimeException("No ABI list supplied.");
             }
 
+			// 为Zygote注册socket
             registerZygoteSocket(socketName);
             EventLog.writeEvent(LOG_BOOT_PROGRESS_PRELOAD_START,
                 SystemClock.uptimeMillis());
-            preload();
+            preload(); // 预加载类和资源
             EventLog.writeEvent(LOG_BOOT_PROGRESS_PRELOAD_END,
                 SystemClock.uptimeMillis());
 
             // Finish profiling the zygote initialization.
             SamplingProfilerIntegration.writeZygoteSnapshot();
 
-            // Do an initial gc to clean up after startup
+            // Do an initial gc to clean up after startup 
+            // gc 操作
             gcAndFinalize();
 
             // Disable tracing so that forked processes do not inherit stale tracing tags from
@@ -605,11 +615,11 @@ public class ZygoteInit {
             Trace.setTracingEnabled(false);
 
             if (startSystemServer) {
-                startSystemServer(abiList, socketName);
+                startSystemServer(abiList, socketName); // 启动system-server
             }
 
             Log.i(TAG, "Accepting command socket connections");
-            runSelectLoop(abiList);
+            runSelectLoop(abiList); // 进入循环模式
 
             closeServerSocket();
         } catch (MethodAndArgsCaller caller) {
@@ -662,7 +672,7 @@ public class ZygoteInit {
     private static void runSelectLoop(String abiList) throws MethodAndArgsCaller {
         ArrayList<FileDescriptor> fds = new ArrayList<FileDescriptor>();
         ArrayList<ZygoteConnection> peers = new ArrayList<ZygoteConnection>();
-
+		// sServerSocket是socket通信中的服务端，即zygote进程，保存到fds[0]
         fds.add(sServerSocket.getFileDescriptor());
         peers.add(null);
 
@@ -674,23 +684,29 @@ public class ZygoteInit {
                 pollFds[i].events = (short) POLLIN;
             }
             try {
+				//处理轮询状态，当pollFds有事件到来则往下执行，否则阻塞在这里
                 Os.poll(pollFds, -1);
             } catch (ErrnoException ex) {
                 throw new RuntimeException("poll failed", ex);
             }
             for (int i = pollFds.length - 1; i >= 0; --i) {
+				//采用I/O多路复用机制，当接收到客户端发出连接请求 或者数据处理请求到来，则往下执行；
+           		// 否则进入continue，跳出本次循环
                 if ((pollFds[i].revents & POLLIN) == 0) {
                     continue;
                 }
                 if (i == 0) {
+					//即fds[0]，代表的是sServerSocket，则意味着有客户端连接请求；
+                    // 则创建ZygoteConnection对象,并添加到fds。
                     ZygoteConnection newPeer = acceptCommandPeer(abiList);
                     peers.add(newPeer);
                     fds.add(newPeer.getFileDesciptor());
                 } else {
+					//i>0，则代表通过socket接收来自对端的数据，并执行相应操作
                     boolean done = peers.get(i).runOnce();
                     if (done) {
                         peers.remove(i);
-                        fds.remove(i);
+                        fds.remove(i); //处理完则从fds中移除该文件描述符
                     }
                 }
             }

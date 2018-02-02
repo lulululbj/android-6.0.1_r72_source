@@ -247,6 +247,7 @@ int main(int argc, char* const argv[])
         const char* arg = argv[i++];
         if (strcmp(arg, "--zygote") == 0) {
             zygote = true;
+			// 对于 64 位系统，niceName 为 zygote64; 32 位系统为 zygote
             niceName = ZYGOTE_NICE_NAME;
         } else if (strcmp(arg, "--start-system-server") == 0) {
             startSystemServer = true;
@@ -270,10 +271,12 @@ int main(int argc, char* const argv[])
         //
         // The Remainder of args get passed to startup class main(). Make
         // copies of them before we overwrite them with the process name.
+        // 运行 application 或者 tool 程序
         args.add(application ? String8("application") : String8("tool"));
         runtime.setClassNameAndArgs(className, argc - i, argv + i);
     } else {
         // We're in zygote mode.
+        // 进入 zygote 模式，创建 /data/dalvik-cache 路径
         maybeCreateDalvikCache();
 
         if (startSystemServer) {
@@ -298,6 +301,7 @@ int main(int argc, char* const argv[])
         }
     }
 
+	// 设置进程名
     if (!niceName.isEmpty()) {
         runtime.setArgv0(niceName.string());
         set_process_name(niceName.string());
@@ -306,11 +310,12 @@ int main(int argc, char* const argv[])
     if (zygote) {
         runtime.start("com.android.internal.os.ZygoteInit", args, zygote);
     } else if (className) {
+    	// 启动 AppRuntime
         runtime.start("com.android.internal.os.RuntimeInit", args, zygote);
     } else {
         fprintf(stderr, "Error: no class name or --zygote supplied.\n");
         app_usage();
         LOG_ALWAYS_FATAL("app_process: no class name or --zygote supplied.");
-        return 10;
+        return 10; // 没有指定类名或者 zygote，参数错误
     }
 }

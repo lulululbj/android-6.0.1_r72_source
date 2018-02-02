@@ -136,6 +136,7 @@ class ZygoteConnection {
         FileDescriptor[] descriptors;
 
         try {
+			//读取socket客户端发送过来的参数列表
             args = readArgumentList();
             descriptors = mSocket.getAncillaryFileDescriptors();
         } catch (IOException ex) {
@@ -163,6 +164,7 @@ class ZygoteConnection {
         FileDescriptor serverPipeFd = null;
 
         try {
+			//将binder客户端传递过来的参数，解析成Arguments对象格式
             parsedArgs = new Arguments(args);
 
             if (parsedArgs.abiListQuery) {
@@ -238,8 +240,10 @@ class ZygoteConnection {
         try {
             if (pid == 0) {
                 // in child
+                //子进程执行
                 IoUtils.closeQuietly(serverPipeFd);
                 serverPipeFd = null;
+		    	//进入子进程流程
                 handleChildProc(parsedArgs, descriptors, childPipeFd, newStderr);
 
                 // should never get here, the child is expected to either
@@ -247,6 +251,7 @@ class ZygoteConnection {
                 return true;
             } else {
                 // in parent...pid of < 0 means failure
+                //父进程执行
                 IoUtils.closeQuietly(childPipeFd);
                 childPipeFd = null;
                 return handleParentProc(pid, descriptors, serverPipeFd, parsedArgs);

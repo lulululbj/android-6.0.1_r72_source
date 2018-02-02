@@ -215,6 +215,7 @@ static void com_android_internal_os_RuntimeInit_nativeSetExitWithoutCleanup(JNIE
 
 /*
  * JNI registration.
+ * java层方法名与jni层方法名的一一映射
  */
 static JNINativeMethod gMethods[] = {
     { "nativeFinishInit", "()V",
@@ -623,6 +624,10 @@ int AndroidRuntime::startVm(JavaVM** pJavaVM, JNIEnv** pEnv, bool zygote)
     char methodTraceFileSizeBuf[sizeof("-Xmethod-trace-file-size:") + PROPERTY_VALUE_MAX];
     char fingerprintBuf[sizeof("-Xfingerprint:") + PROPERTY_VALUE_MAX];
 
+	/*
+	 * JNI检测功能，用于native层调用jni函数时进行常规检测，比较弱字符串格式是否符合要求，资源是否正确释放。
+	 * 该功能一般用于早期系统调试或手机Eng版，对于User版往往不会开启，引用该功能比较消耗系统CPU资源，降低系统性能。
+	 */
     bool checkJni = false;
     property_get("dalvik.vm.checkjni", propBuf, "");
     if (strcmp(propBuf, "true") == 0) {
@@ -652,6 +657,7 @@ int AndroidRuntime::startVm(JavaVM** pJavaVM, JNIEnv** pEnv, bool zygote)
         executionMode = kEMJitCompiler;
     }
 
+	// 虚拟机产生的trace文件，主要用于分析系统问题，默认路径为 /data/anr/traces.txt
     parseRuntimeOption("dalvik.vm.stack-trace-file", stackTraceFileBuf, "-Xstacktracefile:");
 
     strcpy(jniOptsBuf, "-Xjniopts:");
@@ -677,6 +683,7 @@ int AndroidRuntime::startVm(JavaVM** pJavaVM, JNIEnv** pEnv, bool zygote)
      * The default starting and maximum size of the heap.  Larger
      * values should be specified in a product property override.
      */
+    //对于不同的软硬件环境，这些参数往往需要调整、优化，从而使系统达到最佳性能
     parseRuntimeOption("dalvik.vm.heapstartsize", heapstartsizeOptsBuf, "-Xms", "4m");
     parseRuntimeOption("dalvik.vm.heapsize", heapsizeOptsBuf, "-Xmx", "16m");
 
@@ -962,6 +969,7 @@ int AndroidRuntime::startVm(JavaVM** pJavaVM, JNIEnv** pEnv, bool zygote)
      * The JavaVM* is essentially per-process, and the JNIEnv* is per-thread.
      * If this call succeeds, the VM is ready, and we can start issuing
      * JNI calls.
+     * 初始化虚拟机
      */
     if (JNI_CreateJavaVM(pJavaVM, pEnv, &initArgs) < 0) {
         ALOGE("JNI_CreateJavaVM failed\n");
@@ -1040,6 +1048,7 @@ void AndroidRuntime::start(const char* className, const Vector<String8>& options
     JniInvocation jni_invocation;
     jni_invocation.Init(NULL);
     JNIEnv* env;
+	// 创建虚拟机
     if (startVm(&mJavaVM, &env, zygote) != 0) {
         return;
     }
@@ -1047,6 +1056,7 @@ void AndroidRuntime::start(const char* className, const Vector<String8>& options
 
     /*
      * Register android functions.
+     * JNI 方法注册
      */
     if (startReg(env) < 0) {
         ALOGE("Unable to register all android natives\n");
@@ -1064,12 +1074,19 @@ void AndroidRuntime::start(const char* className, const Vector<String8>& options
 
     stringClass = env->FindClass("java/lang/String");
     assert(stringClass != NULL);
+	//等价 strArray= new String[options.size() + 1];
     strArray = env->NewObjectArray(options.size() + 1, stringClass, NULL);
     assert(strArray != NULL);
     classNameStr = env->NewStringUTF(className);
     assert(classNameStr != NULL);
+	//等价 strArray[0] = "com.android.internal.os.ZygoteInit"
     env->SetObjectArrayElement(strArray, 0, classNameStr);
 
+    /*
+     * 等价 strArray[1] = "start-system-server"；
+     * strArray[2] = "--abi-list=xxx"；
+     * 其中xxx为系统响应的cpu架构类型，比如arm64-v8a.
+     */
     for (size_t i = 0; i < options.size(); ++i) {
         jstring optionsStr = env->NewStringUTF(options.itemAt(i).string());
         assert(optionsStr != NULL);
@@ -1080,6 +1097,7 @@ void AndroidRuntime::start(const char* className, const Vector<String8>& options
      * Start VM.  This thread becomes the main thread of the VM, and will
      * not return until the VM exits.
      */
+    //将"com.android.internal.os.ZygoteInit"转换为"com/android/internal/os/ZygoteInit"
     char* slashClassName = toSlashClassName(className);
     jclass startClass = env->FindClass(slashClassName);
     if (startClass == NULL) {
@@ -1092,6 +1110,7 @@ void AndroidRuntime::start(const char* className, const Vector<String8>& options
             ALOGE("JavaVM unable to find main() in '%s'\n", className);
             /* keep going */
         } else {
+        	// 调用 ZygoteInit.main() 方法
             env->CallStaticVoidMethod(startClass, startMeth, strArray);
 
 #if 0
@@ -1100,6 +1119,7 @@ void AndroidRuntime::start(const char* className, const Vector<String8>& options
 #endif
         }
     }
+	// 释放相关对象内存
     free(slashClassName);
 
     ALOGD("Shutting down VM\n");
@@ -1443,6 +1463,7 @@ static const RegJNIRec gRegJNI[] = {
      * This hook causes all future threads created in this process to be
      * attached to the JavaVM.  (This needs to go away in favor of JNI
      * Attach calls.)
+     * 设置进程创建方法为 javaCreateThreadEtc
      */
     androidSetCreateThreadFunc((android_create_thread_fn) javaCreateThreadEtc);
 
@@ -1456,6 +1477,7 @@ static const RegJNIRec gRegJNI[] = {
      */
     env->PushLocalFrame(200);
 
+	// 进程jni方法的注册
     if (register_jni_procs(gRegJNI, NELEM(gRegJNI), env) < 0) {
         env->PopLocalFrame(NULL);
         return -1;
