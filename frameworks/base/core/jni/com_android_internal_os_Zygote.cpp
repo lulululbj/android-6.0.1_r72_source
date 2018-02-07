@@ -447,12 +447,13 @@ static pid_t ForkAndSpecializeCommon(JNIEnv* env, uid_t uid, gid_t gid, jintArra
                                      jstring java_se_info, jstring java_se_name,
                                      bool is_system_server, jintArray fdsToClose,
                                      jstring instructionSet, jstring dataDir) {
+  // 设置子进程的signal信号处理函数
   SetSigChldHandler();
 
 #ifdef ENABLE_SCHED_BOOST
   SetForkLoad(true);
 #endif
-
+  // fork 子进程
   pid_t pid = fork();
 
   if (pid == 0) {
@@ -460,6 +461,7 @@ static pid_t ForkAndSpecializeCommon(JNIEnv* env, uid_t uid, gid_t gid, jintArra
     gMallocLeakZygoteChild = 1;
 
     // Clean up any descriptors which must be closed immediately
+    // 关闭并清除文件描述符
     DetachDescriptors(env, fdsToClose);
 
     // Keep capabilities across UID change, unless we're staying root.
@@ -498,6 +500,7 @@ static pid_t ForkAndSpecializeCommon(JNIEnv* env, uid_t uid, gid_t gid, jintArra
       }
     }
 
+	// 如果不是system_server子进程，则创建进程组
     if (!is_system_server) {
         int rc = createProcessGroup(uid, getpid());
         if (rc != 0) {
@@ -509,9 +512,9 @@ static pid_t ForkAndSpecializeCommon(JNIEnv* env, uid_t uid, gid_t gid, jintArra
         }
     }
 
-    SetGids(env, javaGids);
+    SetGids(env, javaGids); // 设置Group
 
-    SetRLimits(env, javaRlimits);
+    SetRLimits(env, javaRlimits); // 设置资源limit
 
     if (use_native_bridge) {
       ScopedUtfChars isa_string(env, instructionSet);
@@ -542,7 +545,7 @@ static pid_t ForkAndSpecializeCommon(JNIEnv* env, uid_t uid, gid_t gid, jintArra
 
     SetCapabilities(env, permittedCapabilities, effectiveCapabilities);
 
-    SetSchedulerPolicy(env);
+    SetSchedulerPolicy(env); // 设置调度策略
 
     const char* se_info_c_str = NULL;
     ScopedUtfChars* se_info = NULL;
@@ -564,6 +567,7 @@ static pid_t ForkAndSpecializeCommon(JNIEnv* env, uid_t uid, gid_t gid, jintArra
           RuntimeAbort(env);
         }
     }
+	// selinux上下文
     rc = selinux_android_setcontext(uid, is_system_server, se_info_c_str, se_name_c_str);
     if (rc == -1) {
       ALOGE("selinux_android_setcontext(%d, %d, \"%s\", \"%s\") failed", uid,
@@ -574,17 +578,18 @@ static pid_t ForkAndSpecializeCommon(JNIEnv* env, uid_t uid, gid_t gid, jintArra
     // Make it easier to debug audit logs by setting the main thread's name to the
     // nice name rather than "app_process".
     if (se_info_c_str == NULL && is_system_server) {
-      se_name_c_str = "system_server";
+      se_name_c_str = "system_server"; 
     }
     if (se_info_c_str != NULL) {
-      SetThreadName(se_name_c_str);
+      SetThreadName(se_name_c_str);// 设置线程名为system_server，便于调试
     }
 
     delete se_info;
     delete se_name;
 
+    // 设置了子进程的signal信号处理函数为默认函数
     UnsetSigChldHandler();
-
+	// 等价于调用zygote.callPostForkChildHooks()
     env->CallStaticVoidMethod(gZygoteClass, gCallPostForkChildHooks, debug_flags,
                               is_system_server ? NULL : instructionSet);
     if (env->ExceptionCheck()) {
@@ -626,6 +631,7 @@ static jint com_android_internal_os_Zygote_nativeForkSystemServer(
         JNIEnv* env, jclass, uid_t uid, gid_t gid, jintArray gids,
         jint debug_flags, jobjectArray rlimits, jlong permittedCapabilities,
         jlong effectiveCapabilities) {
+        // fork 子进程
   pid_t pid = ForkAndSpecializeCommon(env, uid, gid, gids,
                                       debug_flags, rlimits,
                                       permittedCapabilities, effectiveCapabilities,
@@ -641,7 +647,7 @@ static jint com_android_internal_os_Zygote_nativeForkSystemServer(
       int status;
       if (waitpid(pid, &status, WNOHANG) == pid) {
           ALOGE("System server process %d has died. Restarting Zygote!", pid);
-          RuntimeAbort(env);
+          RuntimeAbort(env); // 当system_server进程死亡后，重启zygote进程
       }
   }
   return pid;

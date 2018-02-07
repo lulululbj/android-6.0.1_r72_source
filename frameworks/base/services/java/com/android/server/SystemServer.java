@@ -165,7 +165,7 @@ public final class SystemServer {
      * The main entry point from zygote.
      */
     public static void main(String[] args) {
-        new SystemServer().run();
+        new SystemServer().run(); // 初始化SystemServer对象，再调用run()方法
     }
 
     public SystemServer() {
@@ -178,6 +178,7 @@ public final class SystemServer {
         // APIs crash dealing with negative numbers, notably
         // java.io.File#setLastModified, so instead we fake it and
         // hope that time from cell towers or NTP fixes it shortly.
+        // 当系统时间小于1970年，就设置当前系统时间为1970年
         if (System.currentTimeMillis() < EARLIEST_SUPPORTED_TIME) {
             Slog.w(TAG, "System clock is before 1970; setting to 1970.");
             SystemClock.setCurrentTimeMillis(EARLIEST_SUPPORTED_TIME);
@@ -211,6 +212,7 @@ public final class SystemServer {
         // had to fallback to a different runtime because it is
         // running as root and we need to be the system user to set
         // the property. http://b/11463182
+        // 变更虚拟机的库文件，对于Android6.0默认采用的是libart.so
         SystemProperties.set("persist.sys.dalvik.vm.lib.2", VMRuntime.getRuntime().vmLibrary());
 
         // Enable the sampling profiler.
@@ -226,48 +228,58 @@ public final class SystemServer {
         }
 
         // Mmmmmm... more memory!
+        // 清除VM内存增长上限，启动过程中需要较多的虚拟机内存空间
         VMRuntime.getRuntime().clearGrowthLimit();
 
         // The system server has to run all of the time, so it needs to be
         // as efficient as possible with its memory usage.
+        // 设置内存的可能有效使用率为0.8
         VMRuntime.getRuntime().setTargetHeapUtilization(0.8f);
 
         // Some devices rely on runtime fingerprint generation, so make sure
         // we've defined it before booting further.
+        // 针对部分设备依赖于运行时就产生指纹信息，因此需要在开机完成前已经定义
         Build.ensureFingerprintProperty();
 
         // Within the system server, it is an error to access Environment paths without
         // explicitly specifying a user.
+        // 访问环境变量前，需要明确指定用户
         Environment.setUserRequired(true);
 
         // Ensure binder calls into the system always run at foreground priority.
+        // 确保当前系统的Binder调用总是运行在前台优先级（foreground priority）
         BinderInternal.disableBackgroundScheduling(true);
 
-        // Prepare the main looper thread (this thread).
+        // Prepare the main looper thread (this thread). 
         android.os.Process.setThreadPriority(
                 android.os.Process.THREAD_PRIORITY_FOREGROUND);
         android.os.Process.setCanSelfBackground(false);
-        Looper.prepareMainLooper();
+        Looper.prepareMainLooper(); // 主线程Looper
 
         // Initialize native services.
+        // 加载android_servers.so库，该库的源码包含在frameworks/base/services/目录下
         System.loadLibrary("android_servers");
 
         // Check whether we failed to shut down last time we tried.
         // This call may not return.
+        // 检测上次关机过程是否失败，该方法可能不会返回
         performPendingShutdown();
 
         // Initialize the system context.
+        // 初始化系统上下文
         createSystemContext();
 
         // Create the system service manager.
+        // 创建系统服务管理
         mSystemServiceManager = new SystemServiceManager(mSystemContext);
+		// 将mSystemServiceManager添加到本地服务成员sLocalServiceObjects
         LocalServices.addService(SystemServiceManager.class, mSystemServiceManager);
 
         // Start services.
         try {
             startBootstrapServices(); // 启动引导服务
-            startCoreServices();
-            startOtherServices();
+            startCoreServices(); // 启动核心服务
+            startOtherServices(); // 启动其他服务
         } catch (Throwable ex) {
             Slog.e("System", "******************************************");
             Slog.e("System", "************ Failure starting system services", ex);
@@ -275,6 +287,7 @@ public final class SystemServer {
         }
 
         // For debug builds, log event loop stalls to dropbox for analysis.
+        // 用于debug版本，将log事件不断循环地输出到dropbox（用于分析）
         if (StrictMode.conditionallyEnableDebugLogging()) {
             Slog.i(TAG, "Enabled StrictMode for system server main thread.");
         }
@@ -301,12 +314,13 @@ public final class SystemServer {
             } else {
                 reason = null;
             }
-
+			// 当"sys.shutdown.requested"值不为空,则会重启或者关机
             ShutdownThread.rebootOrShutdown(null, reboot, reason);
         }
     }
 
     private void createSystemContext() {
+        // 创建system_server进程的上下文信息
         ActivityThread activityThread = ActivityThread.systemMain();
         mSystemContext = activityThread.getSystemContext();
         mSystemContext.setTheme(android.R.style.Theme_DeviceDefault_Light_DarkActionBar);

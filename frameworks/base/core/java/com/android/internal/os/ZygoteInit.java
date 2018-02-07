@@ -417,17 +417,18 @@ public class ZygoteInit {
             ZygoteConnection.Arguments parsedArgs)
             throws ZygoteInit.MethodAndArgsCaller {
 
-        closeServerSocket();
+        closeServerSocket(); // 关闭父进程zygote复制而来的socket
 
         // set umask to 0077 so new files and directories will default to owner-only permissions.
         Os.umask(S_IRWXG | S_IRWXO);
 
         if (parsedArgs.niceName != null) {
-            Process.setArgV0(parsedArgs.niceName);
+            Process.setArgV0(parsedArgs.niceName); // 设置当前进程名为system_server
         }
 
         final String systemServerClasspath = Os.getenv("SYSTEMSERVERCLASSPATH");
         if (systemServerClasspath != null) {
+			// 执行dex优化操作
             performSystemServerDexOpt(systemServerClasspath);
         }
 
@@ -443,12 +444,14 @@ public class ZygoteInit {
                 System.arraycopy(parsedArgs.remainingArgs, 0, amendedArgs, 2, parsedArgs.remainingArgs.length);
             }
 
+			// 启动应用进程
             WrapperInit.execApplication(parsedArgs.invokeWith,
                     parsedArgs.niceName, parsedArgs.targetSdkVersion,
                     VMRuntime.getCurrentInstructionSet(), null, args);
         } else {
             ClassLoader cl = null;
             if (systemServerClasspath != null) {
+				// 创建类加载器，并赋予当前线程
                 cl = new PathClassLoader(systemServerClasspath, ClassLoader.getSystemClassLoader());
                 Thread.currentThread().setContextClassLoader(cl);
             }
@@ -468,7 +471,9 @@ public class ZygoteInit {
      */
     private static void performSystemServerDexOpt(String classPath) {
         final String[] classPathElements = classPath.split(":");
+		// 创建一个与installed建立的socket连接
         final InstallerConnection installer = new InstallerConnection();
+		// 执行ping操作，直到与installed服务端连通为止
         installer.waitForConnection();
         final String instructionSet = VMRuntime.getRuntime().vmInstructionSet();
 
@@ -477,6 +482,7 @@ public class ZygoteInit {
                 final int dexoptNeeded = DexFile.getDexOptNeeded(
                         classPathElement, "*", instructionSet, false /* defer */);
                 if (dexoptNeeded != DexFile.NO_DEXOPT_NEEDED) {
+					// 以system权限，执行dex文件优化
                     installer.dexopt(classPathElement, Process.SYSTEM_UID, false,
                             instructionSet, dexoptNeeded, false /* boot complete */);
                 }
@@ -484,7 +490,7 @@ public class ZygoteInit {
         } catch (IOException ioe) {
             throw new RuntimeException("Error starting system_server", ioe);
         } finally {
-            installer.disconnect();
+            installer.disconnect(); // 断开与installed的socket连接
         }
     }
 
@@ -739,6 +745,7 @@ public class ZygoteInit {
 
         public void run() {
             try {
+				//根据传递过来的参数，通过反射机制调用方法
                 mMethod.invoke(null, new Object[] { mArgs });
             } catch (IllegalAccessException ex) {
                 throw new RuntimeException(ex);

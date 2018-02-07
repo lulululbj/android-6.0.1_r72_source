@@ -204,7 +204,7 @@ static void com_android_internal_os_RuntimeInit_nativeFinishInit(JNIEnv* env, jo
 
 static void com_android_internal_os_RuntimeInit_nativeZygoteInit(JNIEnv* env, jobject clazz)
 {
-    gCurRuntime->onZygoteInit();
+    gCurRuntime->onZygoteInit(); // gCurRuntime为AppRuntime，是在AndroidRuntime.cpp中定义的
 }
 
 static void com_android_internal_os_RuntimeInit_nativeSetExitWithoutCleanup(JNIEnv* env,
@@ -748,6 +748,8 @@ int AndroidRuntime::startVm(JavaVM** pJavaVM, JNIEnv** pEnv, bool zygote)
     }
 
     // Make sure there is a preloaded-classes file.
+    // preloaded-classes文件内容是由WritePreloadedClassFile.java生成的
+    // 在ZygoteInit类中会将其中的classed预加载到内存，提高系统性能
     if (!hasFile("/system/etc/preloaded-classes")) {
         ALOGE("Missing preloaded-classes file, /system/etc/preloaded-classes not found: %s\n",
               strerror(errno));

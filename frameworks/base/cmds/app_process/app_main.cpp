@@ -194,9 +194,10 @@ int main(int argc, char* const argv[])
         }
     }
 
+	//传到的参数argv为“-Xzygote /system/bin --zygote --start-system-server”
     AppRuntime runtime(argv[0], computeArgBlockSize(argc, argv));
     // Process command line arguments
-    // ignore argv[0]
+    // ignore argv[0] 忽略第一个参数
     argc--;
     argv++;
 
@@ -236,6 +237,7 @@ int main(int argc, char* const argv[])
     }
 
     // Parse runtime arguments.  Stop at first unrecognized option.
+    // 参数解析
     bool zygote = false;
     bool startSystemServer = false;
     bool application = false;

@@ -107,10 +107,12 @@ public class RuntimeInit {
         if (DEBUG) Slog.d(TAG, "Entered RuntimeInit!");
 
         /* set default handler; this applies to all threads in the VM */
+		// 设置默认的未捕捉异常处理方法
         Thread.setDefaultUncaughtExceptionHandler(new UncaughtHandler());
 
         /*
          * Install a TimezoneGetter subclass for ZoneInfo.db
+         * 设置时区
          */
         TimezoneGetter.setInstance(new TimezoneGetter() {
             @Override
@@ -127,17 +129,19 @@ public class RuntimeInit {
          * can't use the system property here since the logger has almost
          * certainly already been initialized.
          */
-        LogManager.getLogManager().reset();
+        LogManager.getLogManager().reset(); // 重置log配置
         new AndroidConfig();
 
         /*
          * Sets the default HTTP User-Agent used by HttpURLConnection.
+         * 设置默认的 HTTP User-Agent 格式，用于 HttpURLConnection
          */
         String userAgent = getDefaultUserAgent();
         System.setProperty("http.agent", userAgent);
 
         /*
          * Wire socket tagging to traffic stats.
+         * 设置socket的tag，用于网络流量统计
          */
         NetworkManagementSocketTagger.install();
 
@@ -229,6 +233,7 @@ public class RuntimeInit {
          * by invoking the exception's run() method. This arrangement
          * clears up all the stack frames that were required in setting
          * up the process.
+         * 通过抛出异常，回到Zygote.main()，好处是清空栈帧，提高栈帧利用率
          */
         throw new ZygoteInit.MethodAndArgsCaller(m, argv);
     }
@@ -271,11 +276,11 @@ public class RuntimeInit {
         if (DEBUG) Slog.d(TAG, "RuntimeInit: Starting application from zygote");
 
         Trace.traceBegin(Trace.TRACE_TAG_ACTIVITY_MANAGER, "RuntimeInit");
-        redirectLogStreams();
+        redirectLogStreams(); // 重定向log输出
 
-        commonInit();
-        nativeZygoteInit();
-        applicationInit(targetSdkVersion, argv, classLoader);
+        commonInit(); // 通用的一些初始化操作
+        nativeZygoteInit();// zygote初始化
+        applicationInit(targetSdkVersion, argv, classLoader); // 应用初始化
     }
 
     /**
@@ -303,16 +308,18 @@ public class RuntimeInit {
         // shutdown an Android application gracefully.  Among other things, the
         // Android runtime shutdown hooks close the Binder driver, which can cause
         // leftover running threads to crash before the process actually exits.
+        // true代表应用程序退出时不调用AppRuntime.onExit(),否则会调用
         nativeSetExitWithoutCleanup(true);
 
         // We want to be fairly aggressive about heap utilization, to avoid
         // holding on to a lot of memory that isn't needed.
+        // 设置虚拟机的内存利用率参数值为0.75
         VMRuntime.getRuntime().setTargetHeapUtilization(0.75f);
         VMRuntime.getRuntime().setTargetSdkVersion(targetSdkVersion);
 
         final Arguments args;
         try {
-            args = new Arguments(argv);
+            args = new Arguments(argv); // 解析参数
         } catch (IllegalArgumentException ex) {
             Slog.e(TAG, ex.getMessage());
             // let the process exit
@@ -323,6 +330,7 @@ public class RuntimeInit {
         Trace.traceEnd(Trace.TRACE_TAG_ACTIVITY_MANAGER);
 
         // Remaining arguments are passed to the start class's static main
+        // 调用 startClass的静态方法 main()
         invokeStaticMain(args.startClass, args.startArgs, classLoader);
     }
 
