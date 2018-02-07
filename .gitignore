@@ -20,7 +20,6 @@ pdk/
 platform_testing/
 prebuilts/
 sdk/
-system/
 tools/
 frameworks/av/
 frameworks/compile/
