@@ -450,6 +450,7 @@ public class Binder implements IBinder {
         // Log any exceptions as warnings, don't silently suppress them.
         // If the call was FLAG_ONEWAY then these exceptions disappear into the ether.
         try {
+			// 调用子类AMN.onTransact方法
             res = onTransact(code, data, reply, flags);
         } catch (RemoteException e) {
             if ((flags & FLAG_ONEWAY) != 0) {
@@ -499,6 +500,7 @@ final class BinderProxy implements IBinder {
     }
 
     public boolean transact(int code, Parcel data, Parcel reply, int flags) throws RemoteException {
+        // 检测Parcel大小是否大于800K
         Binder.checkParcel(this, code, data, "Unreasonably large binder buffer");
         return transactNative(code, data, reply, flags);
     }

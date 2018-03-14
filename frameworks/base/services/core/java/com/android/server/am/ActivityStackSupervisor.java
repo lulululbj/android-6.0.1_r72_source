@@ -936,9 +936,11 @@ public final class ActivityStackSupervisor implements DisplayListener {
         boolean componentSpecified = intent.getComponent() != null;
 
         // Don't modify the client's object!
+        // 创建新的Intent，不修改原来的对象
         intent = new Intent(intent);
 
         // Collect information about the target of the Intent.
+        // 收集Intent所指向的Activity信息, 当存在多个可供选择的Activity,则直接向用户弹出resolveActivity
         ActivityInfo aInfo =
                 resolveActivity(intent, resolvedType, startFlags, profilerInfo, userId);
 
@@ -1185,6 +1187,7 @@ public final class ActivityStackSupervisor implements DisplayListener {
             mWindowManager.setAppVisibility(r.appToken, true);
 
             // schedule launch ticks to collect information about slow apps.
+            // 调度启动ticks用以收集应用启动慢的信息
             r.startLaunchTickingLocked();
         }
 
@@ -1242,6 +1245,7 @@ public final class ActivityStackSupervisor implements DisplayListener {
             }
             if (r.isHomeActivity() && r.isNotResolverActivity()) {
                 // Home process is the root process of the task.
+                // home进程是该栈的根进程
                 mService.mHomeProcess = task.mActivities.get(0).app;
             }
             mService.ensurePackageDexOpt(r.intent.getComponent().getPackageName());
@@ -1280,6 +1284,7 @@ public final class ActivityStackSupervisor implements DisplayListener {
                 app.hasShownUi = true;
                 app.pendingUiClean = true;
             }
+			// 将该进程设置为前台进程PROCESS_STATE_TOP
             app.forceProcessStateUpTo(mService.mTopProcessState);
             app.thread.scheduleLaunchActivity(new Intent(r.intent), r.appToken,
                     System.identityHashCode(r), r.info, new Configuration(mService.mConfiguration),
@@ -1311,6 +1316,7 @@ public final class ActivityStackSupervisor implements DisplayListener {
             if (r.launchFailed) {
                 // This is the second time we failed -- finish activity
                 // and give up.
+                // 第二次启动失败，则结束该activity
                 Slog.e(TAG, "Second failure launching "
                       + r.intent.getComponent().flattenToShortString()
                       + ", giving up", e);
@@ -1322,11 +1328,13 @@ public final class ActivityStackSupervisor implements DisplayListener {
 
             // This is the first time we failed -- restart process and
             // retry.
+            // 这是第一个启动失败，则重启进程
             app.activities.remove(r);
             throw e;
         }
 
         r.launchFailed = false;
+		// 将该进程加入到mLRUActivities队列顶部
         if (stack.updateLRUListLocked(r)) {
             Slog.w(TAG, "Activity " + r
                   + " being launched, but already in LRU list");
@@ -1352,11 +1360,13 @@ public final class ActivityStackSupervisor implements DisplayListener {
         // a chance to initialize itself while in the background, making the
         // switch back to it faster and look better.
         if (isFrontStack(stack)) {
+			 //当系统发生更新时，只会执行一次的用户向导
             mService.startSetupActivityLocked();
         }
 
         // Update any services we are bound to that might care about whether
         // their client may have activities.
+        // 更新所有与该Activity具有绑定关系的Service连接
         mService.mServices.updateServiceConnectionActivitiesLocked(r.app);
 
         return true;
@@ -1381,6 +1391,7 @@ public final class ActivityStackSupervisor implements DisplayListener {
                     app.addPackage(r.info.packageName, r.info.applicationInfo.versionCode,
                             mService.mProcessStats);
                 }
+				// 真正启动 Activity
                 realStartActivityLocked(r, app, andResume, checkConfig);
                 return;
             } catch (RemoteException e) {
@@ -1391,7 +1402,7 @@ public final class ActivityStackSupervisor implements DisplayListener {
             // If a dead object exception was thrown -- fall through to
             // restart the application.
         }
-
+		// 当进程不存在则创建进程
         mService.startProcessLocked(r.processName, r.info.applicationInfo, true, 0,
                 "activity", r.intent.getComponent(), false, false, true);
     }
@@ -1405,7 +1416,7 @@ public final class ActivityStackSupervisor implements DisplayListener {
             boolean ignoreTargetSecurity, boolean componentSpecified, ActivityRecord[] outActivity,
             ActivityContainer container, TaskRecord inTask) {
         int err = ActivityManager.START_SUCCESS;
-
+		// 获取调用者的进程记录对象
         ProcessRecord callerApp = null;
         if (caller != null) {
             callerApp = mService.getRecordForAppLocked(caller);
@@ -1434,6 +1445,7 @@ public final class ActivityStackSupervisor implements DisplayListener {
         ActivityRecord sourceRecord = null;
         ActivityRecord resultRecord = null;
         if (resultTo != null) {
+			// 获取调用者所在的Activity
             sourceRecord = isInAnyStackLocked(resultTo);
             if (DEBUG_RESULTS) Slog.v(TAG_RESULTS,
                     "Will send result to " + resultTo + " " + sourceRecord);
@@ -1449,6 +1461,7 @@ public final class ActivityStackSupervisor implements DisplayListener {
         if ((launchFlags & Intent.FLAG_ACTIVITY_FORWARD_RESULT) != 0 && sourceRecord != null) {
             // Transfer the result target from the source activity to the new
             // one being started, including any failures.
+            // activity执行结果的返回由源Activity转换到新Activity, 不需要返回结果则不会进入该分支
             if (requestCode >= 0) {
                 ActivityOptions.abort(options);
                 return ActivityManager.START_FORWARD_AND_REQUEST_CONFLICT;
@@ -1481,12 +1494,14 @@ public final class ActivityStackSupervisor implements DisplayListener {
         if (err == ActivityManager.START_SUCCESS && intent.getComponent() == null) {
             // We couldn't find a class that can handle the given Intent.
             // That's the end of that!
+            // 从Intent中无法找到相应的Component
             err = ActivityManager.START_INTENT_NOT_RESOLVED;
         }
 
         if (err == ActivityManager.START_SUCCESS && aInfo == null) {
             // We couldn't find the specific class specified in the Intent.
             // Also the end of the line.
+            // 从Intent中无法找到相应的ActivityInfo
             err = ActivityManager.START_CLASS_NOT_FOUND;
         }
 
@@ -1494,6 +1509,7 @@ public final class ActivityStackSupervisor implements DisplayListener {
                 && !isCurrentProfileLocked(userId)
                 && (aInfo.flags & FLAG_SHOW_FOR_ALL_USERS) == 0) {
             // Trying to launch a background activity that doesn't show for all users.
+            // 尝试启动一个后台Activity, 但该Activity对当前用户不可见
             err = ActivityManager.START_NOT_CURRENT_USER_ACTIVITY;
         }
 
@@ -1552,6 +1568,7 @@ public final class ActivityStackSupervisor implements DisplayListener {
 
         boolean abort = false;
 
+		// 权限检查
         final int startAnyPerm = mService.checkPermission(
                 START_ANY_ACTIVITY, callingPid, callingUid);
 
@@ -1622,6 +1639,7 @@ public final class ActivityStackSupervisor implements DisplayListener {
             }
         }
 
+		// 权限检查不满足,才进入该分支则直接返回；
         if (abort) {
             if (resultRecord != null) {
                 resultStack.sendActivityResultLocked(-1, resultRecord, resultWho, requestCode,
@@ -1632,7 +1650,7 @@ public final class ActivityStackSupervisor implements DisplayListener {
             ActivityOptions.abort(options);
             return ActivityManager.START_SUCCESS;
         }
-
+		// 创建ActivityRecord对象
         ActivityRecord r = new ActivityRecord(mService, callerApp, callingUid, callingPackage,
                 intent, resolvedType, aInfo, mService.mConfiguration, resultRecord, resultWho,
                 requestCode, componentSpecified, voiceSession != null, this, container, options);
@@ -1645,14 +1663,16 @@ public final class ActivityStackSupervisor implements DisplayListener {
             // tracking under any it has.
             r.appTimeTracker = sourceRecord.appTimeTracker;
         }
-
+		// 将mFocusedStack赋予当前stack
         final ActivityStack stack = mFocusedStack;
         if (voiceSession == null && (stack.mResumedActivity == null
                 || stack.mResumedActivity.info.applicationInfo.uid != callingUid)) {
+            // 前台stack有还没有resume的Activity时，则检查是否允许app切换
             if (!mService.checkAppSwitchAllowedLocked(callingPid, callingUid,
                     realCallingPid, realCallingUid, "Activity start")) {
                 PendingActivityLaunch pal =
                         new PendingActivityLaunch(r, sourceRecord, startFlags, stack);
+				// 当不允许切换，则把要启动的Activity添加到mPendingActivityLaunches，并且直接返回
                 mPendingActivityLaunches.add(pal);
                 ActivityOptions.abort(options);
                 return ActivityManager.START_SWITCHES_CANCELED;
@@ -1665,11 +1685,12 @@ public final class ActivityStackSupervisor implements DisplayListener {
             // home (switches disabled, switch to home, mDidAppSwitch now true);
             // user taps a home icon (coming from home so allowed, we hit here
             // and now allow anyone to switch again).
+            // 从上次禁止app切换以来,这是第二次允许app切换,因此将允许切换时间设置为0,则表示可以任意切换app
             mService.mAppSwitchesAllowedTime = 0;
         } else {
             mService.mDidAppSwitch = true;
         }
-
+		// 处理 pendind Activity的启动, 这些Activity是由于app switch禁用从而被hold的等待启动activity
         doPendingActivityLaunchesLocked(false);
 
         err = startActivityUncheckedLocked(r, sourceRecord, voiceSession, voiceInteractor,
@@ -1825,6 +1846,9 @@ public final class ActivityStackSupervisor implements DisplayListener {
         return true;
     }
 
+	/**
+	 * sourceRecord 指调用者，r 指将要启动的Activity
+	 */
     final int startActivityUncheckedLocked(final ActivityRecord r, ActivityRecord sourceRecord,
             IVoiceInteractionSession voiceSession, IVoiceInteractor voiceInteractor, int startFlags,
             boolean doResume, Bundle options, TaskRecord inTask) {
@@ -1848,6 +1872,7 @@ public final class ActivityStackSupervisor implements DisplayListener {
         if ((launchFlags & Intent.FLAG_ACTIVITY_NEW_DOCUMENT) != 0 &&
                 (launchSingleInstance || launchSingleTask)) {
             // We have a conflict between the Intent and the Activity manifest, manifest wins.
+            // 当 Intent 和 Activity Manifest 冲突时，manifest 优先
             Slog.i(TAG, "Ignoring FLAG_ACTIVITY_NEW_DOCUMENT, launchMode is " +
                     "\"singleInstance\" or \"singleTask\"");
             launchFlags &=
@@ -1908,6 +1933,7 @@ public final class ActivityStackSupervisor implements DisplayListener {
         // If the caller has asked not to resume at this point, we make note
         // of this in the record so that we can skip it when trying to find
         // the top running activity.
+        // 当本次不需要resume，设置为延迟resume状态
         if (!doResume) {
             r.delayedResume = true;
         }
@@ -1926,6 +1952,7 @@ public final class ActivityStackSupervisor implements DisplayListener {
             }
             if (!checkedCaller.realActivity.equals(r.realActivity)) {
                 // Caller is not the same as launcher, so always needed.
+                // 调用者与将要启动的Activity不相同
                 startFlags &= ~ActivityManager.START_FLAG_ONLY_IF_NEEDED;
             }
         }
@@ -1936,7 +1963,9 @@ public final class ActivityStackSupervisor implements DisplayListener {
         // If the caller is not coming from another activity, but has given us an
         // explicit task into which they would like us to launch the new activity,
         // then let's see about doing that.
+        // 当调用者不是来自activity，而是明确指定task的情况
         if (sourceRecord == null && inTask != null && inTask.stack != null) {
+			// 目前sourceRecord不为空，则不进入该分支
             final Intent baseIntent = inTask.getBaseIntent();
             final ActivityRecord root = inTask.getRootActivity();
             if (baseIntent == null) {
@@ -1991,6 +2020,7 @@ public final class ActivityStackSupervisor implements DisplayListener {
             if (sourceRecord == null) {
                 // This activity is not being started from another...  in this
                 // case we -always- start a new task.
+                // 调用者并不是Activity context,则强制创建新task
                 if ((launchFlags & Intent.FLAG_ACTIVITY_NEW_TASK) == 0 && inTask == null) {
                     Slog.w(TAG, "startActivity called from non-Activity context; forcing " +
                             "Intent.FLAG_ACTIVITY_NEW_TASK for: " + intent);
@@ -2000,10 +2030,12 @@ public final class ActivityStackSupervisor implements DisplayListener {
                 // The original activity who is starting us is running as a single
                 // instance...  this new activity it is starting must go on its
                 // own task.
+                // 调用者activity带有single instance，则创建新task
                 launchFlags |= Intent.FLAG_ACTIVITY_NEW_TASK;
             } else if (launchSingleInstance || launchSingleTask) {
                 // The activity being started is a single instance...  it always
                 // gets launched into its own task.
+                // 目标activity带有single instance或者single task，则创建新task
                 launchFlags |= Intent.FLAG_ACTIVITY_NEW_TASK;
             }
         }
@@ -2018,6 +2050,7 @@ public final class ActivityStackSupervisor implements DisplayListener {
                 // so we don't want to blindly throw it in to that task.  Instead we will take
                 // the NEW_TASK flow and try to find a task for it. But save the task information
                 // so it can be used when creating the new task.
+                // 调用者处于即将finish状态，则创建新task
                 if ((launchFlags & Intent.FLAG_ACTIVITY_NEW_TASK) == 0) {
                     Slog.w(TAG, "startActivity called from finishing " + sourceRecord
                             + "; forcing " + "Intent.FLAG_ACTIVITY_NEW_TASK for: " + intent);
@@ -2028,6 +2061,7 @@ public final class ActivityStackSupervisor implements DisplayListener {
                 sourceRecord = null;
                 sourceStack = null;
             } else {
+				// 当调用者Activity不为空，且不处于finishing状态，则其所在栈赋于sourceStack
                 sourceStack = sourceRecord.task.stack;
             }
         } else {
@@ -2057,6 +2091,7 @@ public final class ActivityStackSupervisor implements DisplayListener {
                 // a SINGLE_INSTANCE activity, there can be one and only one
                 // instance of it in the history, and it is always in its own
                 // unique task, so we do a special search.
+                // 从mActivityDisplays开始查询是否有相应ActivityRecord
                 ActivityRecord intentActivity = !launchSingleInstance ?
                         findTaskLocked(r) : findActivityLocked(intent, r.info);
                 if (intentActivity != null) {
@@ -2080,6 +2115,7 @@ public final class ActivityStackSupervisor implements DisplayListener {
                         // base intent.
                         intentActivity.task.setIntent(r);
                     }
+					// 将该task移至前台
                     targetStack = intentActivity.task.stack;
                     targetStack.mLastPausedActivity = null;
                     // If the target task is not in the front, then we need
@@ -2109,6 +2145,7 @@ public final class ActivityStackSupervisor implements DisplayListener {
                                     (FLAG_ACTIVITY_NEW_TASK | FLAG_ACTIVITY_TASK_ON_HOME))
                                     == (FLAG_ACTIVITY_NEW_TASK | FLAG_ACTIVITY_TASK_ON_HOME)) {
                                 // Caller wants to appear on home activity.
+                                // 将toReturnTo设置为home
                                 intentActivity.task.setTaskToReturnTo(HOME_ACTIVITY_TYPE);
                             }
                             options = null;
@@ -2121,7 +2158,7 @@ public final class ActivityStackSupervisor implements DisplayListener {
                     }
 
                     // If the caller has requested that the target task be
-                    // reset, then do so.
+                    // reset, then do so. 重置目标task
                     if ((launchFlags&Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED) != 0) {
                         intentActivity = targetStack.resetTaskIfNeededLocked(intentActivity, r);
                     }
@@ -2135,6 +2172,7 @@ public final class ActivityStackSupervisor implements DisplayListener {
 
                             // Make sure to notify Keyguard as well if we are not running an app
                             // transition later.
+                            // 当没有启动至前台，则通知Keyguard
                             if (!movedToFront) {
                                 notifyActivityDrawnForKeyguard();
                             }
@@ -2149,6 +2187,7 @@ public final class ActivityStackSupervisor implements DisplayListener {
                         // existing task with its new activity.  Well that should
                         // not be too hard...
                         reuseTask = intentActivity.task;
+						// 移除所有跟已存在的task有关联的activity
                         reuseTask.performClearTaskLocked();
                         reuseTask.setIntent(r);
                     } else if ((launchFlags & FLAG_ACTIVITY_CLEAR_TOP) != 0
@@ -2169,6 +2208,7 @@ public final class ActivityStackSupervisor implements DisplayListener {
                             }
                             ActivityStack.logStartActivity(EventLogTags.AM_NEW_INTENT,
                                     r, top.task);
+							// 触发onNewIntent()
                             top.deliverNewIntentLocked(callingUid, r.intent, r.launchedFromPackage);
                         } else {
                             // A special case: we need to start the activity because it is not
@@ -2202,6 +2242,7 @@ public final class ActivityStackSupervisor implements DisplayListener {
                             if (intentActivity.frontOfTask) {
                                 intentActivity.task.setIntent(r);
                             }
+							// 触发onNewIntent()
                             intentActivity.deliverNewIntentLocked(callingUid, r.intent,
                                     r.launchedFromPackage);
                         } else if (!r.intent.filterEquals(intentActivity.task.intent)) {
@@ -2259,6 +2300,7 @@ public final class ActivityStackSupervisor implements DisplayListener {
             // If the activity being launched is the same as the one currently
             // at the top, then we need to check if it should only be launched
             // once.
+            // 当启动的activity跟前台显示是同一个的情况
             ActivityStack topStack = mFocusedStack;
             ActivityRecord top = topStack.topRunningNonDelayedActivityLocked(notTop);
             if (top != null && r.resultTo == null) {
@@ -2281,6 +2323,7 @@ public final class ActivityStackSupervisor implements DisplayListener {
                                 // is the case, so this is it!
                                 return ActivityManager.START_RETURN_INTENT_TO_CALLER;
                             }
+							// 触发onNewIntent()
                             top.deliverNewIntentLocked(callingUid, r.intent, r.launchedFromPackage);
                             return ActivityManager.START_DELIVERED_TO_TOP;
                         }
@@ -2456,6 +2499,7 @@ public final class ActivityStackSupervisor implements DisplayListener {
         }
         ActivityStack.logStartActivity(EventLogTags.AM_CREATE_ACTIVITY, r, r.task);
         targetStack.mLastPausedActivity = null;
+		// 创建Activity
         targetStack.startActivityLocked(r, newTask, doResume, keepCurTransition, options);
         if (!launchTaskBehind) {
             // Don't set focus on an activity that's going to the back.
@@ -2465,6 +2509,9 @@ public final class ActivityStackSupervisor implements DisplayListener {
     }
 
     final void doPendingActivityLaunchesLocked(boolean doResume) {
+    // mPendingActivityLaunches记录着所有将要启动的Activity, 是由于在startActivityLocked的过程时App切换功能被禁止, 
+    // 也就是不运行切换Activity, 那么此时便会把相应的Activity加入到mPendingActivityLaunches队列.
+    // 该队列的成员在执行完doPendingActivityLaunchesLocked便会清空.
         while (!mPendingActivityLaunches.isEmpty()) {
             PendingActivityLaunch pal = mPendingActivityLaunches.remove(0);
 

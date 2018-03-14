@@ -1539,7 +1539,7 @@ final class ActivityStack {
 
     final boolean resumeTopActivityLocked(ActivityRecord prev, Bundle options) {
         if (mStackSupervisor.inResumeTopActivity) {
-            // Don't even start recursing.
+            // Don't even start recursing. 防止递归启动
             return false;
         }
 
@@ -1561,6 +1561,7 @@ final class ActivityStack {
     private boolean resumeTopActivityInnerLocked(ActivityRecord prev, Bundle options) {
         if (DEBUG_LOCKSCREEN) mService.logLockScreen("");
 
+		//系统没有进入booting或booted状态，则不允许启动Activity
         if (!mService.mBooting && !mService.mBooted) {
             // Not ready yet!
             return false;
@@ -1574,9 +1575,11 @@ final class ActivityStack {
             return false;
         }
 
+	    // top running之后的任意处于初始化状态且有显示StartingWindow, 则移除StartingWindow
         cancelInitializingActivities();
 
         // Find the first activity that is not finishing.
+        // 找到第一个没有finishing的栈顶activity
         final ActivityRecord next = topRunningActivityLocked(null);
 
         // Remember how we'll process this pause/resume situation, and ensure
@@ -1591,6 +1594,7 @@ final class ActivityStack {
             if (!mFullscreen) {
                 // Try to move focus to the next visible stack with a running activity if this
                 // stack is not covering the entire screen.
+                // 当该栈没有全屏，则尝试聚焦到下一个可见的stack
                 final ActivityStack stack = getNextVisibleStackLocked();
                 if (adjustFocusToNextVisibleStackLocked(stack, reason)) {
                     return mStackSupervisor.resumeTopActivitiesLocked(stack, prev, null);
@@ -1602,6 +1606,7 @@ final class ActivityStack {
                     "resumeTopActivityLocked: No more activities go home");
             if (DEBUG_STACK) mStackSupervisor.validateTopActivitiesLocked();
             // Only resume home if on home display
+            // 启动home桌面activity
             final int returnTaskType = prevTask == null || !prevTask.isOverHomeStack() ?
                     HOME_ACTIVITY_TYPE : prevTask.getTaskToReturnTo();
             return isOnHomeDisplay() &&
@@ -1649,6 +1654,7 @@ final class ActivityStack {
 
         // If we are sleeping, and there is no resumed activity, and the top
         // activity is paused, well that is the state we want.
+        // 处于睡眠或者关机状态，top activity已暂停的情况下
         if (mService.isSleepingOrShuttingDown()
                 && mLastPausedActivity == next
                 && mStackSupervisor.allPausedActivitiesComplete()) {
@@ -1666,6 +1672,7 @@ final class ActivityStack {
         // Make sure that the user who owns this activity is started.  If not,
         // we will just leave it as is because someone should be bringing
         // another user's activities to the top of the stack.
+        // 拥有该activity的用户没有启动则直接返回
         if (mService.mStartedUsers.get(next.userId) == null) {
             Slog.w(TAG, "Skipping resume of top activity " + next
                     + ": user " + next.userId + " is stopped");
@@ -2080,6 +2087,7 @@ final class ActivityStack {
             // Last activity in task had been removed or ActivityManagerService is reusing task.
             // Insert or replace.
             // Might not even be in.
+            // task中的上一个activity已被移除，或者ams重用该task,则将该task移到顶部
             insertTaskAtTop(rTask, r);
             mWindowManager.moveTaskToTop(taskId);
         }

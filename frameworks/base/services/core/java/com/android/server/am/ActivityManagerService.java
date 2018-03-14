@@ -10547,6 +10547,7 @@ public final class ActivityManagerService extends ActivityManagerNative
         }
     }
 
+	// 当mAppSwitchesAllowedTime时间小于当前时长,或者具有STOP_APP_SWITCHES的权限,则允许app发生切换操作
     boolean checkAppSwitchAllowedLocked(int sourcePid, int sourceUid,
             int callingPid, int callingUid, String name) {
         if (mAppSwitchesAllowedTime < SystemClock.uptimeMillis()) {

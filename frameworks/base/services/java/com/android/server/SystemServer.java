@@ -337,9 +337,11 @@ public final class SystemServer {
         // Wait for installd to finish starting up so that it has a chance to
         // create critical directories such as /data/user with the appropriate
         // permissions.  We need this to complete before we initialize other services.
+        // 阻塞等待与installed建立socket连接
         Installer installer = mSystemServiceManager.startService(Installer.class);
 
         // Activity manager runs the show.
+        // 启动服务ActivityManagerService
         mActivityManagerService = mSystemServiceManager.startService(
                 ActivityManagerService.Lifecycle.class).getService();
         mActivityManagerService.setSystemServiceManager(mSystemServiceManager);
@@ -349,20 +351,24 @@ public final class SystemServer {
         // Native daemons may be watching for it to be registered so it must be ready
         // to handle incoming binder calls immediately (including being able to verify
         // the permissions for those calls).
+        // 启动服务PowerManagerService
         mPowerManagerService = mSystemServiceManager.startService(PowerManagerService.class);
 
         // Now that the power manager has been started, let the activity manager
         // initialize power management features.
+        // 初始化PowerManagement
         mActivityManagerService.initPowerManagement();
 
         // Manages LEDs and display backlight so we need it to bring up the display.
+        // 初始化服务LightsService
         mSystemServiceManager.startService(LightsService.class);
 
         // Display manager is needed to provide display metrics before package manager
-        // starts up.
+        // starts up. 启动服务DisplayManagerService
         mDisplayManagerService = mSystemServiceManager.startService(DisplayManagerService.class);
 
         // We need the default display before we can initialize the package manager.
+        //Phase100: 在初始化package manager之前，需要默认的显示.
         mSystemServiceManager.startBootPhase(SystemService.PHASE_WAIT_FOR_DEFAULT_DISPLAY);
 
         // Only run "core" apps if we're encrypting the device.
@@ -378,23 +384,26 @@ public final class SystemServer {
 
         // Start the package manager.
         Slog.i(TAG, "Package Manager");
-		// 创建PMS对象
+		// 创建PackageManagerService
         mPackageManagerService = PackageManagerService.main(mSystemContext, installer,
                 mFactoryTestMode != FactoryTest.FACTORY_TEST_OFF, mOnlyCore);
         mFirstBoot = mPackageManagerService.isFirstBoot();
         mPackageManager = mSystemContext.getPackageManager();
 
         Slog.i(TAG, "User Service");
+		// 	启动UserManagerService,新建目录/data/user
         ServiceManager.addService(Context.USER_SERVICE, UserManagerService.getInstance());
 
         // Initialize attribute cache used to cache resources from packages.
         AttributeCache.init(mSystemContext);
 
         // Set up the Application instance for the system process and get started.
+        // 设置AMS
         mActivityManagerService.setSystemProcess();
 
         // The sensor service needs access to package manager service, app ops
         // service, and permissions service, therefore we start it after them.
+        // 启动SensorService
         startSensorService();
     }
 
@@ -403,9 +412,11 @@ public final class SystemServer {
      */
     private void startCoreServices() {
         // Tracks the battery level.  Requires LightService.
+        // 启动服务BatteryService，用于统计电池电量，需要LightService
         mSystemServiceManager.startService(BatteryService.class);
 
         // Tracks application usage stats.
+        // 启动服务UsageStatsService，用于统计应用使用情况
         mSystemServiceManager.startService(UsageStatsService.class);
         mActivityManagerService.setUsageStatsManager(
                 LocalServices.getService(UsageStatsManagerInternal.class));
@@ -413,6 +424,7 @@ public final class SystemServer {
         mPackageManagerService.getUsageStatsIfNoPackageUsageInfo();
 
         // Tracks whether the updatable WebView is in a ready state and watches for update installs.
+        // 启动WebViewUpdateService
         mSystemServiceManager.startService(WebViewUpdateService.class);
     }
 

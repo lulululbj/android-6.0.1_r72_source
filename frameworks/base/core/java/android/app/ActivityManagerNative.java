@@ -63,11 +63,14 @@ public abstract class ActivityManagerNative extends Binder implements IActivityM
     /**
      * Cast a Binder object into an activity manager interface, generating
      * a proxy if needed.
+     * 在 Binder IPC 的过程中，同一个进程的调用，asInterface返回的是本地的Binder对象
+     * 对于不同进程的调用返回的是远程代理对象BinderProxy
      */
     static public IActivityManager asInterface(IBinder obj) {
         if (obj == null) {
             return null;
         }
+		// 此处 obj = BinderProxy, descriptor = "android.app.IActivityManager"
         IActivityManager in =
             (IActivityManager)obj.queryLocalInterface(descriptor);
         if (in != null) {
@@ -920,11 +923,13 @@ public abstract class ActivityManagerNative extends Binder implements IActivityM
         case START_SERVICE_TRANSACTION: {
             data.enforceInterface(IActivityManager.descriptor);
             IBinder b = data.readStrongBinder();
+		    // 生成ApplicationThreadNative的代理对象，即ApplicationThreadProxy对象
             IApplicationThread app = ApplicationThreadNative.asInterface(b);
             Intent service = Intent.CREATOR.createFromParcel(data);
             String resolvedType = data.readString();
             String callingPackage = data.readString();
             int userId = data.readInt();
+			// 调用AMS.startService方法
             ComponentName cn = startService(app, service, resolvedType, callingPackage, userId);
             reply.writeNoException();
             ComponentName.writeToParcel(cn, reply);
@@ -2603,10 +2608,12 @@ public abstract class ActivityManagerNative extends Binder implements IActivityM
 
     private static final Singleton<IActivityManager> gDefault = new Singleton<IActivityManager>() {
         protected IActivityManager create() {
+			// 获取名为"activity"的服务
             IBinder b = ServiceManager.getService("activity");
             if (false) {
                 Log.v("ActivityManager", "default service binder = " + b);
             }
+			// 创建AMP对象
             IActivityManager am = asInterface(b);
             if (false) {
                 Log.v("ActivityManager", "default service = " + am);
@@ -2620,7 +2627,7 @@ class ActivityManagerProxy implements IActivityManager
 {
     public ActivityManagerProxy(IBinder remote)
     {
-        mRemote = remote;
+        mRemote = remote; // mRemote 便是指向AMS服务的BinderProxy对象
     }
 
     public IBinder asBinder()
@@ -3670,14 +3677,17 @@ class ActivityManagerProxy implements IActivityManager
     public ComponentName startService(IApplicationThread caller, Intent service,
             String resolvedType, String callingPackage, int userId) throws RemoteException
     {
+    	// 获取或创建Parcel对象
         Parcel data = Parcel.obtain();
         Parcel reply = Parcel.obtain();
         data.writeInterfaceToken(IActivityManager.descriptor);
         data.writeStrongBinder(caller != null ? caller.asBinder() : null);
         service.writeToParcel(data, 0);
+		// 写入Parcel数据
         data.writeString(resolvedType);
         data.writeString(callingPackage);
         data.writeInt(userId);
+		// 通过Binder传递数据
         mRemote.transact(START_SERVICE_TRANSACTION, data, reply, 0);
         reply.readException();
         ComponentName res = ComponentName.readFromParcel(reply);

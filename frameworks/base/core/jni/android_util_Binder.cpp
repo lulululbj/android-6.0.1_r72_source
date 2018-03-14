@@ -1088,6 +1088,7 @@ static jboolean android_os_BinderProxy_transact(JNIEnv* env, jobject obj,
         return JNI_FALSE;
     }
 
+    // 将java Parcel转为c++ Parcel
     Parcel* data = parcelForJavaObject(env, dataObj);
     if (data == NULL) {
         return JNI_FALSE;
@@ -1097,6 +1098,7 @@ static jboolean android_os_BinderProxy_transact(JNIEnv* env, jobject obj,
         return JNI_FALSE;
     }
 
+    // gBinderProxyOffsets.mObject中保存的是new BpBinder(handle)对象
     IBinder* target = (IBinder*)
         env->GetLongField(obj, gBinderProxyOffsets.mObject);
     if (target == NULL) {
@@ -1121,6 +1123,7 @@ static jboolean android_os_BinderProxy_transact(JNIEnv* env, jobject obj,
     }
 
     //printf("Transact from Java code to %p sending: ", target); data->print();
+    // 此处便是BpBinder::transact()
     status_t err = target->transact(code, *data, reply, flags);
     //if (reply) printf("Transact from Java code to %p received: ", target); reply->print();
 

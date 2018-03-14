@@ -302,6 +302,9 @@ public final class Parcel {
 
     /**
      * Retrieve a new Parcel object from the pool.
+     * sOwnedPool 是一个大小为6，存放parcel对象的缓存池
+     * 先尝试从缓存池sOwnedPool中查询是否存在缓存的Parcel对象，若存在直接返回该对象
+     * 如果没有可用的Parcel对象，则直接创建Parcel对象
      */
     public static Parcel obtain() {
         final Parcel[] pool = sOwnedPool;

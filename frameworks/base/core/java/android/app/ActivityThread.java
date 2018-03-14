@@ -2481,19 +2481,22 @@ public final class ActivityThread {
         }
 
         // Make sure we are running with the most recent config.
+		// 最终回调目标Activity的onConfigurationChanged()        
         handleConfigurationChanged(null, null);
 
         if (localLOGV) Slog.v(
             TAG, "Handling launch of " + r);
 
         // Initialize before creating the activity
+        // 初始化WMS
         WindowManagerGlobal.initialize();
-
+		// 最终回调目标Activity的onCreate
         Activity a = performLaunchActivity(r, customIntent);
 
         if (a != null) {
             r.createdConfig = new Configuration(mConfiguration);
             Bundle oldState = r.state;
+			// 最终回调目标Activity的onStart,onResume
             handleResumeActivity(r.token, false, r.isForward,
                     !r.activity.mFinished && !r.startsNotResumed);
 
@@ -2541,7 +2544,7 @@ public final class ActivityThread {
             }
         } else {
             // If there was an error, for any reason, tell the activity
-            // manager to stop us.
+            // manager to stop us. 存在error则停止该Activity
             try {
                 ActivityManagerNative.getDefault()
                     .finishActivity(r.token, Activity.RESULT_CANCELED, null, false);

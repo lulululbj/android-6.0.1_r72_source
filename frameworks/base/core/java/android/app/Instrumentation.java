@@ -1493,6 +1493,7 @@ public class Instrumentation {
                     final ActivityMonitor am = mActivityMonitors.get(i);
                     if (am.match(who, null, intent)) {
                         am.mHits++;
+						// 当该monitor阻塞activity启动，直接返回
                         if (am.isBlocking()) {
                             return requestCode >= 0 ? am.getResult() : null;
                         }
@@ -1504,11 +1505,13 @@ public class Instrumentation {
         try {
             intent.migrateExtraStreamToClipData();
             intent.prepareToLeaveProcess();
+			// ActivityManagerNative.getDefault() 返回的是ActivityManagerProxy对象
             int result = ActivityManagerNative.getDefault()
                 .startActivity(whoThread, who.getBasePackageName(), intent,
                         intent.resolveTypeIfNeeded(who.getContentResolver()),
                         token, target != null ? target.mEmbeddedID : null,
                         requestCode, 0, null, options);
+			// 检车Activity是否启动成功
             checkStartActivityResult(result, intent);
         } catch (RemoteException e) {
             throw new RuntimeException("Failure from system", e);
