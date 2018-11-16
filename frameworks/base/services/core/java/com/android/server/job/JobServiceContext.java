@@ -168,6 +168,7 @@ public class JobServiceContext extends IJobCallback.Stub implements ServiceConne
             mVerb = VERB_BINDING;
             scheduleOpTimeOut();
             final Intent intent = new Intent().setComponent(job.getServiceComponent());
+			//这便是由system_server进程的主线程来执行bind Service的方式来拉起的进程，当服务启动后回调到发起端的onServiceConnected。
             boolean binding = mContext.bindServiceAsUser(intent, this,
                     Context.BIND_AUTO_CREATE | Context.BIND_NOT_FOREGROUND,
                     new UserHandle(job.getUserId()));
@@ -271,6 +272,7 @@ public class JobServiceContext extends IJobCallback.Stub implements ServiceConne
             mCallbackHandler.obtainMessage(MSG_SHUTDOWN_EXECUTION).sendToTarget();
             return;
         }
+		// 获取远程IJobService的代理端
         this.service = IJobService.Stub.asInterface(service);
         final PowerManager pm =
                 (PowerManager) mContext.getSystemService(Context.POWER_SERVICE);
@@ -278,7 +280,7 @@ public class JobServiceContext extends IJobCallback.Stub implements ServiceConne
         mWakeLock.setWorkSource(new WorkSource(runningJob.getUid()));
         mWakeLock.setReferenceCounted(false);
         mWakeLock.acquire();
-        mCallbackHandler.obtainMessage(MSG_SERVICE_BOUND).sendToTarget();
+        mCallbackHandler.obtainMessage(MSG_SERVICE_BOUND).sendToTarget();// 发送消息
     }
 
     /** If the client service crashes we reschedule this job and clean up. */
@@ -377,6 +379,7 @@ public class JobServiceContext extends IJobCallback.Stub implements ServiceConne
             try {
                 mVerb = VERB_STARTING;
                 scheduleOpTimeOut();
+				// 此处经binder调用，回到app进程
                 service.startJob(mParams);
             } catch (RemoteException e) {
                 Slog.e(TAG, "Error sending onStart message to '" +
@@ -520,12 +523,14 @@ public class JobServiceContext extends IJobCallback.Stub implements ServiceConne
             removeOpTimeOut();
             if (mVerb != VERB_EXECUTING) {
                 Slog.e(TAG, "Sending onStopJob for a job that isn't started. " + mRunningJob);
+				// 停止还没有启动的job
                 closeAndCleanupJobH(false /* reschedule */);
                 return;
             }
             try {
                 mVerb = VERB_STOPPING;
                 scheduleOpTimeOut();
+				// 经过binder call回到app进程
                 service.stopJob(mParams);
             } catch (RemoteException e) {
                 Slog.e(TAG, "Error sending onStopJob to client.", e);

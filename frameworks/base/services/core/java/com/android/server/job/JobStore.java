@@ -110,10 +110,12 @@ public class JobStore {
         File systemDir = new File(dataDir, "system");
         File jobDir = new File(systemDir, "job");
         jobDir.mkdirs();
+		// 创建 data/system/job/jobs.xml
         mJobsFile = new AtomicFile(new File(jobDir, "jobs.xml"));
 
         mJobSet = new ArraySet<JobStatus>();
 
+		// 读取所有的JobStatus
         readJobMapFromDisk(mJobSet);
     }
 
@@ -426,7 +428,7 @@ public class JobStore {
                 List<JobStatus> jobs;
                 FileInputStream fis = mJobsFile.openRead();
                 synchronized (JobStore.this) {
-                    jobs = readJobMapImpl(fis);
+                    jobs = readJobMapImpl(fis); // xml解析
                     if (jobs != null) {
                         for (int i=0; i<jobs.size(); i++) {
                             this.jobSet.add(jobs.get(i));
@@ -513,11 +515,12 @@ public class JobStore {
          */
         private JobStatus restoreJobFromXml(XmlPullParser parser) throws XmlPullParserException,
                 IOException {
-            JobInfo.Builder jobBuilder;
+            JobInfo.Builder jobBuilder; 
             int uid;
 
             // Read out job identifier attributes.
             try {
+				// 创建用于获取jobinfo的builder
                 jobBuilder = buildBuilderFromXml(parser);
                 jobBuilder.setPersisted(true);
                 uid = Integer.valueOf(parser.getAttributeValue(null, "uid"));
@@ -538,7 +541,7 @@ public class JobStore {
                 return null;
             }
             try {
-                buildConstraintsFromXml(jobBuilder, parser);
+                buildConstraintsFromXml(jobBuilder, parser); // 读取常量
             } catch (NumberFormatException e) {
                 Slog.d(TAG, "Error reading constraints, skipping.");
                 return null;
@@ -554,6 +557,7 @@ public class JobStore {
             }
 
             // Tuple of (earliest runtime, latest runtime) in elapsed realtime after disk load.
+            // 读取delay和deadline
             Pair<Long, Long> elapsedRuntimes;
             try {
                 elapsedRuntimes = buildExecutionTimesFromXml(parser);

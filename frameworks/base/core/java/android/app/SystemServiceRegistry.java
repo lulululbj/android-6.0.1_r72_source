@@ -649,6 +649,7 @@ final class SystemServiceRegistry {
                 return new NetworkStatsManager(ctx.getOuterContext());
             }});
 
+		// client请求的JOB_SCHEDULER_SERVICE服务是JobSchedulerImpl对象
         registerService(Context.JOB_SCHEDULER_SERVICE, JobScheduler.class,
                 new StaticServiceFetcher<JobScheduler>() {
             @Override

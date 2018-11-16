@@ -188,9 +188,13 @@ public class JobSchedulerService extends com.android.server.SystemService
      * @return Result of this operation. See <code>JobScheduler#RESULT_*</code> return codes.
      */
     public int schedule(JobInfo job, int uId) {
+    	// 创建JobStatus
         JobStatus jobStatus = new JobStatus(job, uId);
+		// 先取消该uid下的任务
         cancelJob(uId, job.getId());
+		// 开始追踪该任务
         startTrackingJob(jobStatus);
+		// 向system_server进程的主线程发送message
         mHandler.obtainMessage(MSG_CHECK_JOB).sendToTarget();
         return JobScheduler.RESULT_SUCCESS;
     }
@@ -247,6 +251,7 @@ public class JobSchedulerService extends com.android.server.SystemService
     public void cancelJob(int uid, int jobId) {
         JobStatus toCancel;
         synchronized (mJobs) {
+			// 查找到相应的jobStatus
             toCancel = mJobs.getJobByUidAndJobId(uid, jobId);
         }
         if (toCancel != null) {
@@ -314,13 +319,15 @@ public class JobSchedulerService extends com.android.server.SystemService
         super(context);
         // Create the controllers.
         mControllers = new ArrayList<StateController>();
-        mControllers.add(ConnectivityController.get(this));
-        mControllers.add(TimeController.get(this));
-        mControllers.add(IdleController.get(this));
-        mControllers.add(BatteryController.get(this));
-        mControllers.add(AppIdleController.get(this));
+        mControllers.add(ConnectivityController.get(this)); // 监听网络连接状态
+        mControllers.add(TimeController.get(this));	// 监听job到期时间
+        mControllers.add(IdleController.get(this)); // 监听屏幕亮\灭，dream进入\退出，状态改变
+        mControllers.add(BatteryController.get(this)); // 监听电池状态
+        mControllers.add(AppIdleController.get(this)); // 监听app是否空闲
 
+		// 创建主线程的Looper
         mHandler = new JobHandler(context.getMainLooper());
+		// 创建binder服务端
         mJobSchedulerStub = new JobSchedulerStub();
         mJobs = JobStore.initAndGet(this);
     }
@@ -406,7 +413,7 @@ public class JobSchedulerService extends com.android.server.SystemService
             rocking = mReadyToRock;
         }
         if (removed && rocking) {
-            for (int i=0; i<mControllers.size(); i++) {
+            for (int i=0; i<mControllers.size(); i++) { // 找到StateController的具体实现子类停止执行
                 StateController controller = mControllers.get(i);
                 controller.maybeStopTrackingJob(jobStatus);
             }
@@ -419,7 +426,7 @@ public class JobSchedulerService extends com.android.server.SystemService
             JobServiceContext jsc = mActiveServices.get(i);
             final JobStatus executing = jsc.getRunningJob();
             if (executing != null && executing.matches(job.getUid(), job.getJobId())) {
-                jsc.cancelExecutingJob();
+                jsc.cancelExecutingJob(); // 找到匹配的正在执行的任务并取消
                 return true;
             }
         }
@@ -593,7 +600,8 @@ public class JobSchedulerService extends com.android.server.SystemService
                     }
                     break;
             }
-            maybeRunPendingJobsH();
+			// 处理mPendingJobs队列中所有的Job
+			maybeRunPendingJobsH();
             // Don't remove JOB_EXPIRED in case one came along while processing the queue.
             removeMessages(MSG_CHECK_JOB);
         }

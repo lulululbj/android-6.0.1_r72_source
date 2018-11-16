@@ -87,12 +87,14 @@ public abstract class JobService extends Service {
         @Override
         public void startJob(JobParameters jobParams) {
             ensureHandler();
+			// 向主线程的Handler发送执行任务的消息
             Message m = Message.obtain(mHandler, MSG_EXECUTE_JOB, jobParams);
             m.sendToTarget();
         }
         @Override
         public void stopJob(JobParameters jobParams) {
             ensureHandler();
+			// 向主线程的Handler发送停止任务的消息
             Message m = Message.obtain(mHandler, MSG_STOP_JOB, jobParams);
             m.sendToTarget();
         }
