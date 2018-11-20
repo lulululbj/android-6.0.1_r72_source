@@ -365,7 +365,7 @@ public abstract class BroadcastReceiver {
          * next broadcast will proceed.
          */
         public final void finish() {
-            if (mType == TYPE_COMPONENT) {
+            if (mType == TYPE_COMPONENT) { //代表是静态注册的广播
                 final IActivityManager mgr = ActivityManagerNative.getDefault();
                 if (QueuedWork.hasPendingWork()) {
                     // If this is a broadcast component, we need to make sure any
@@ -390,7 +390,7 @@ public abstract class BroadcastReceiver {
                             "Finishing broadcast to component " + mToken);
                     sendFinished(mgr);
                 }
-            } else if (mOrderedHint && mType != TYPE_UNREGISTERED) {
+            } else if (mOrderedHint && mType != TYPE_UNREGISTERED) {  //动态注册的串行广播
                 if (ActivityThread.DEBUG_BROADCAST) Slog.i(ActivityThread.TAG,
                         "Finishing broadcast to " + mToken);
                 final IActivityManager mgr = ActivityManagerNative.getDefault();
@@ -417,12 +417,13 @@ public abstract class BroadcastReceiver {
                     if (mResultExtras != null) {
                         mResultExtras.setAllowFds(false);
                     }
-                    if (mOrderedHint) {
+                    if (mOrderedHint) { // mOrderedHint代表发送是否为串行广播
                         am.finishReceiver(mToken, mResultCode, mResultData, mResultExtras,
                                 mAbortBroadcast, mFlags);
                     } else {
                         // This broadcast was sent to a component; it is not ordered,
                         // but we still need to tell the activity manager we are done.
+                        // 并行广播, 但属于静态注册的广播, 仍然需要告知AMS. 
                         am.finishReceiver(mToken, 0, null, null, false, mFlags);
                     }
                 } catch (RemoteException ex) {

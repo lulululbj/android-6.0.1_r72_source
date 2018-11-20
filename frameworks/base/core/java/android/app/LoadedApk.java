@@ -722,6 +722,7 @@ public final class LoadedApk {
                 }
             }
             if (rd == null) {
+				// 当广播分发者为空时，则创建ReceiverDispatcher
                 rd = new ReceiverDispatcher(r, context, handler,
                         instrumentation, registered);
                 if (registered) {
@@ -732,9 +733,11 @@ public final class LoadedApk {
                     map.put(r, rd);
                 }
             } else {
+            	// 验证广播分发者的context，handler是否一致
                 rd.validate(context, handler);
             }
             rd.mForgotten = false;
+			// 获取IIntentReceiver对象
             return rd.getIIntentReceiver();
         }
     }
@@ -880,10 +883,12 @@ public final class LoadedApk {
 
                 Trace.traceBegin(Trace.TRACE_TAG_ACTIVITY_MANAGER, "broadcastReceiveReg");
                 try {
+					// 获取mReceiver的类加载器
                     ClassLoader cl =  mReceiver.getClass().getClassLoader();
                     intent.setExtrasClassLoader(cl);
                     setExtrasClassLoader(cl);
                     receiver.setPendingResult(this);
+					// 回调广播onReceive方法
                     receiver.onReceive(mContext, intent);
                 } catch (Exception e) {
                     if (mRegistered && ordered) {
@@ -913,7 +918,7 @@ public final class LoadedApk {
             if (activityThread == null) {
                 throw new NullPointerException("Handler must not be null");
             }
-
+			// 创建InnerReceiver，这是一个Binder服务端
             mIIntentReceiver = new InnerReceiver(this, !registered);
             mReceiver = receiver;
             mContext = context;
@@ -968,7 +973,9 @@ public final class LoadedApk {
             }
             Args args = new Args(intent, resultCode, data, extras, ordered,
                     sticky, sendingUser);
+			// 通过handler消息机制发送args
             if (!mActivityThread.post(args)) {
+				// 消息成功post到主线程，则不会走此处。
                 if (mRegistered && ordered) {
                     IActivityManager mgr = ActivityManagerNative.getDefault();
                     if (ActivityThread.DEBUG_BROADCAST) Slog.i(ActivityThread.TAG,

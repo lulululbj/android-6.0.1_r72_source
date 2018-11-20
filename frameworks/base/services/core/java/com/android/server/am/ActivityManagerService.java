@@ -754,6 +754,7 @@ public final class ActivityManagerService extends ActivityManagerNative
     /**
      * Keeps track of all IIntentReceivers that have been registered for broadcasts.
      * Hash keys are the receiver IBinder, hash value is a ReceiverList.
+     * 记录着所有已注册的广播，以receiver IBinder为key，ReceiverList为value的HashMap
      */
     final HashMap<IBinder, ReceiverList> mRegisteredReceivers = new HashMap<>();
 
@@ -4626,7 +4627,7 @@ public final class ActivityManagerService extends ActivityManagerNative
         if (thread == null) {
             return null;
         }
-
+		//从mLruProcesses队列中查看
         int appIndex = getLRURecordIndexForAppLocked(thread);
         return appIndex >= 0 ? mLruProcesses.get(appIndex) : null;
     }
@@ -16230,6 +16231,7 @@ public final class ActivityManagerService extends ActivityManagerNative
         int callingPid;
         synchronized(this) {
             if (caller != null) {
+				// 从mLruProcesses查询调用者的进程信息
                 callerApp = getRecordForAppLocked(caller);
                 if (callerApp == null) {
                     throw new SecurityException(
@@ -16253,7 +16255,7 @@ public final class ActivityManagerService extends ActivityManagerNative
 
             userId = handleIncomingUser(callingPid, callingUid, userId,
                     true, ALLOW_FULL_ONLY, "registerReceiver", callerPackage);
-
+			// 获取IntentFilter中的actions，这就是需要监听的广播action
             Iterator<String> actions = filter.actionsIterator();
             if (actions == null) {
                 ArrayList<String> noAction = new ArrayList<String>(1);
@@ -16266,6 +16268,7 @@ public final class ActivityManagerService extends ActivityManagerNative
             while (actions.hasNext()) {
                 String action = actions.next();
                 for (int id : userIds) {
+					// 从mStickyBroadcasts中查看用户的sticky intent
                     ArrayMap<String, ArrayList<Intent>> stickies = mStickyBroadcasts.get(id);
                     if (stickies != null) {
                         ArrayList<Intent> intents = stickies.get(action);
@@ -16273,6 +16276,7 @@ public final class ActivityManagerService extends ActivityManagerNative
                             if (stickyIntents == null) {
                                 stickyIntents = new ArrayList<Intent>();
                             }
+							// 将sticky Intent加入队列
                             stickyIntents.addAll(intents);
                         }
                     }
@@ -16290,10 +16294,12 @@ public final class ActivityManagerService extends ActivityManagerNative
                 // provider that needs to lock mProviderMap in ActivityThread
                 // and also it may need to wait application response, so we
                 // cannot lock ActivityManagerService here.
+                // 查询匹配的sticky广播
                 if (filter.match(resolver, intent, true, TAG) >= 0) {
                     if (allSticky == null) {
                         allSticky = new ArrayList<Intent>();
                     }
+					// 匹配成功，则将该intent添加到sticky队列
                     allSticky.add(intent);
                 }
             }
@@ -16309,23 +16315,25 @@ public final class ActivityManagerService extends ActivityManagerNative
         synchronized (this) {
             if (callerApp != null && (callerApp.thread == null
                     || callerApp.thread.asBinder() != caller.asBinder())) {
-                // Original caller already died
+                // Original caller already died 调用者已经死亡
                 return null;
             }
             ReceiverList rl = mRegisteredReceivers.get(receiver.asBinder());
             if (rl == null) {
+				//对于没有注册的广播，创建接收者队列
                 rl = new ReceiverList(this, callerApp, callingPid, callingUid,
                         userId, receiver);
                 if (rl.app != null) {
                     rl.app.receivers.add(rl);
                 } else {
                     try {
-                        receiver.asBinder().linkToDeath(rl, 0);
+                        receiver.asBinder().linkToDeath(rl, 0);// 注册死亡通知
                     } catch (RemoteException e) {
                         return sticky;
                     }
                     rl.linkedToDeath = true;
                 }
+				// 新创建的接收者队列，添加到已注册广播队列
                 mRegisteredReceivers.put(receiver.asBinder(), rl);
             } else if (rl.uid != callingUid) {
                 throw new IllegalArgumentException(
@@ -16340,16 +16348,18 @@ public final class ActivityManagerService extends ActivityManagerNative
                         "Receiver requested to register for user " + userId
                         + " was previously registered for user " + rl.userId);
             }
+			//创建BroadcastFilter对象，并添加到接收者队列
             BroadcastFilter bf = new BroadcastFilter(filter, rl, callerPackage,
                     permission, callingUid, userId);
             rl.add(bf);
             if (!bf.debugCheck()) {
                 Slog.w(TAG, "==> For Dynamic broadcast");
             }
+			//新创建的广播过滤者，添加到ReceiverResolver队列
             mReceiverResolver.addFilter(bf);
 
             // Enqueue broadcasts for all existing stickies that match
-            // this filter.
+            // this filter. 所有匹配该filter的sticky广播执行入队操作
             if (allSticky != null) {
                 ArrayList receivers = new ArrayList();
                 receivers.add(bf);
@@ -16357,11 +16367,14 @@ public final class ActivityManagerService extends ActivityManagerNative
                 final int stickyCount = allSticky.size();
                 for (int i = 0; i < stickyCount; i++) {
                     Intent intent = allSticky.get(i);
+					// 根据intent返回前台或后台广播队列
                     BroadcastQueue queue = broadcastQueueForIntent(intent);
                     BroadcastRecord r = new BroadcastRecord(queue, intent, null,
                             null, -1, -1, null, null, AppOpsManager.OP_NONE, null, receivers,
                             null, 0, null, null, false, true, true, -1);
+					//将该广播加入到并行广播队列
                     queue.enqueueParallelBroadcastLocked(r);
+					//调度广播，发送BROADCAST_INTENT_MSG消息，触发处理下一个广播。
                     queue.scheduleBroadcastsLocked();
                 }
             }
@@ -16446,6 +16459,7 @@ public final class ActivityManagerService extends ActivityManagerNative
                                 UserManager.DISALLOW_DEBUGGING_FEATURES, user)) {
                     continue;
                 }
+				//调用PKMS.queryIntentReceivers，可获取AndroidManifest.xml声明的接收者信息
                 List<ResolveInfo> newReceivers = AppGlobals.getPackageManager()
                         .queryIntentReceivers(intent, resolvedType, STOCK_PM_FLAGS, user);
                 if (user != UserHandle.USER_OWNER && newReceivers != null) {
@@ -16510,6 +16524,16 @@ public final class ActivityManagerService extends ActivityManagerNative
         return receivers;
     }
 
+	/*
+	 * step1: 设置flag
+     * step2: 广播权限验证
+     * step3: 处理系统相关广播
+     * step4: 增加sticky广播
+     * step5: 查询receivers和registeredReceivers
+     * step6: 处理并行广播
+     * step7: 合并registeredReceivers到receivers
+     * step8: 处理串行广播
+	 */
     private final int broadcastIntentLocked(ProcessRecord callerApp,
             String callerPackage, Intent intent, String resolvedType,
             IIntentReceiver resultTo, int resultCode, String resultData,
@@ -16518,9 +16542,11 @@ public final class ActivityManagerService extends ActivityManagerNative
         intent = new Intent(intent);
 
         // By default broadcasts do not go to stopped apps.
+        // 默认不会给已停止的app发送广播
         intent.addFlags(Intent.FLAG_EXCLUDE_STOPPED_PACKAGES);
 
         // If we have not finished booting, don't allow this to launch new processes.
+        // 当没有启动完成时，不允许启动新进程
         if (!mProcessesReady && (intent.getFlags()&Intent.FLAG_RECEIVER_BOOT_UPGRADE) == 0) {
             intent.addFlags(Intent.FLAG_RECEIVER_REGISTERED_ONLY);
         }
@@ -16538,7 +16564,7 @@ public final class ActivityManagerService extends ActivityManagerNative
         // Make sure that the user who is receiving this broadcast is running.
         // If not, we will just skip it. Make an exception for shutdown broadcasts
         // and upgrade steps.
-
+		// 检查发送广播时用户状态
         if (userId != UserHandle.USER_ALL && !isUserRunningLocked(userId, false)) {
             if ((callingUid != Process.SYSTEM_UID
                     || (intent.getFlags() & Intent.FLAG_RECEIVER_BOOT_UPGRADE) == 0)
@@ -16580,13 +16606,13 @@ public final class ActivityManagerService extends ActivityManagerNative
             || callingAppId == Process.SHELL_UID || callingAppId == Process.BLUETOOTH_UID
             || callingAppId == Process.NFC_UID || callingUid == 0) {
             // Always okay.
-        } else if (callerApp == null || !callerApp.persistent) {
+        } else if (callerApp == null || !callerApp.persistent) { //当调用者进程为空或者非persistent进程
             try {
                 if (AppGlobals.getPackageManager().isProtectedBroadcast(
                         intent.getAction())) {
                     String msg = "Permission Denial: not allowed to send broadcast "
                             + intent.getAction() + " from pid="
-                            + callingPid + ", uid=" + callingUid;
+                            + callingPid + ", uid=" + callingUid;// 发送受保护广播时，抛出异常
                     Slog.w(TAG, msg);
                     throw new SecurityException(msg);
                 } else if (AppWidgetManager.ACTION_APPWIDGET_CONFIGURE.equals(intent.getAction())) {
@@ -16623,8 +16649,8 @@ public final class ActivityManagerService extends ActivityManagerNative
         }
 
         final String action = intent.getAction();
-        if (action != null) {
-            switch (action) {
+        if (action != null) { 
+            switch (action) { //处理系统广播
                 case Intent.ACTION_UID_REMOVED:
                 case Intent.ACTION_PACKAGE_REMOVED:
                 case Intent.ACTION_PACKAGE_CHANGED:
@@ -16757,7 +16783,7 @@ public final class ActivityManagerService extends ActivityManagerNative
             }
         }
 
-        // Add to the sticky list if requested.
+        // Add to the sticky list if requested. 增加sticky广播
         if (sticky) {
             if (checkPermission(android.Manifest.permission.BROADCAST_STICKY,
                     callingPid, callingUid)
@@ -16773,13 +16799,13 @@ public final class ActivityManagerService extends ActivityManagerNative
                         + " and enforce permissions " + Arrays.toString(requiredPermissions));
                 return ActivityManager.BROADCAST_STICKY_CANT_HAVE_PERMISSION;
             }
-            if (intent.getComponent() != null) {
+            if (intent.getComponent() != null) { //当sticky广播发送给指定组件，则throw Exception
                 throw new SecurityException(
                         "Sticky broadcasts can't target a specific component");
             }
             // We use userId directly here, since the "all" target is maintained
             // as a separate set of sticky broadcasts.
-            if (userId != UserHandle.USER_ALL) {
+            if (userId != UserHandle.USER_ALL) {//当非USER_ALL广播跟USER_ALL广播出现冲突,则throw Exception
                 // But first, if this is not a broadcast to all users, then
                 // make sure it doesn't conflict with an existing broadcast to
                 // all users.
@@ -16815,10 +16841,12 @@ public final class ActivityManagerService extends ActivityManagerNative
             for (i = 0; i < stickiesCount; i++) {
                 if (intent.filterEquals(list.get(i))) {
                     // This sticky already exists, replace it.
+                    // 替换已存在的sticky intent
                     list.set(i, new Intent(intent));
                     break;
                 }
             }
+			//新的intent追加到list
             if (i >= stickiesCount) {
                 list.add(new Intent(intent));
             }
@@ -16834,11 +16862,11 @@ public final class ActivityManagerService extends ActivityManagerNative
         }
 
         // Figure out who all will receive this broadcast.
-        List receivers = null;
-        List<BroadcastFilter> registeredReceivers = null;
+        List receivers = null; //记录着匹配当前intent的所有静态注册广播接收者
+        List<BroadcastFilter> registeredReceivers = null; //记录着匹配当前的所有动态注册的广播接收者
         // Need to resolve the intent to interested receivers...
         if ((intent.getFlags()&Intent.FLAG_RECEIVER_REGISTERED_ONLY)
-                 == 0) {
+                 == 0) {//当允许静态接收者处理该广播，则通过PKMS根据Intent查询相应的静态receivers
             receivers = collectReceiverComponents(intent, resolvedType, callingUid, users);
         }
         if (intent.getComponent() == null) {
@@ -16851,7 +16879,7 @@ public final class ActivityManagerService extends ActivityManagerNative
                         continue;
                     }
                     List<BroadcastFilter> registeredReceiversForUser =
-                            mReceiverResolver.queryIntent(intent,
+                            mReceiverResolver.queryIntent(intent, // 查询动态注册的广播接收者
                                     resolvedType, false, users[i]);
                     if (registeredReceivers == null) {
                         registeredReceivers = registeredReceiversForUser;
@@ -16865,12 +16893,13 @@ public final class ActivityManagerService extends ActivityManagerNative
             }
         }
 
+		//用于标识是否需要用新intent替换旧的intent。
         final boolean replacePending =
                 (intent.getFlags()&Intent.FLAG_RECEIVER_REPLACE_PENDING) != 0;
 
         if (DEBUG_BROADCAST) Slog.v(TAG_BROADCAST, "Enqueing broadcast: " + intent.getAction()
                 + " replacePending=" + replacePending);
-
+		//处理并行广播
         int NR = registeredReceivers != null ? registeredReceivers.size() : 0;
         if (!ordered && NR > 0) {
             // If we are not serializing this broadcast, then send the
@@ -16884,14 +16913,18 @@ public final class ActivityManagerService extends ActivityManagerNative
             if (DEBUG_BROADCAST) Slog.v(TAG_BROADCAST, "Enqueueing parallel broadcast " + r);
             final boolean replaced = replacePending && queue.replaceParallelBroadcastLocked(r);
             if (!replaced) {
+				//将BroadcastRecord对象加入到并行广播队列
                 queue.enqueueParallelBroadcastLocked(r);
+				//处理广播
                 queue.scheduleBroadcastsLocked();
             }
+			//动态注册的广播接收者处理完成，则会置空该变量
             registeredReceivers = null;
             NR = 0;
         }
 
         // Merge into one list.
+        // 动态注册的registeredReceivers，全部合并到receivers，再统一按串行方式处理。
         int ir = 0;
         if (receivers != null) {
             // A special case for PACKAGE_ADDED: do not allow the package
@@ -16978,7 +17011,9 @@ public final class ActivityManagerService extends ActivityManagerNative
 
             boolean replaced = replacePending && queue.replaceOrderedBroadcastLocked(r);
             if (!replaced) {
+				//将BroadcastRecord加入到有序广播队列
                 queue.enqueueOrderedBroadcastLocked(r);
+				//处理广播
                 queue.scheduleBroadcastsLocked();
             }
         }
@@ -17044,6 +17079,7 @@ public final class ActivityManagerService extends ActivityManagerNative
             String requiredPermission, Bundle options, boolean serialized, boolean sticky,
             int userId) {
         synchronized(this) {
+			//验证广播Intent是否有效
             intent = verifyBroadcastLocked(intent);
 
             final long origId = Binder.clearCallingIdentity();
@@ -17131,6 +17167,7 @@ public final class ActivityManagerService extends ActivityManagerNative
             }
 
             if (doNext) {
+				// 处理下一条广播
                 r.queue.processNextBroadcast(false);
             }
             trimApplications();

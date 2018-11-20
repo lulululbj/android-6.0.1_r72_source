@@ -896,7 +896,9 @@ public final class ActivityThread {
         public void scheduleRegisteredReceiver(IIntentReceiver receiver, Intent intent,
                 int resultCode, String dataStr, Bundle extras, boolean ordered,
                 boolean sticky, int sendingUser, int processState) throws RemoteException {
+            // 更新虚拟机进程状态
             updateProcessState(processState, false);
+			//receiver=LoadedApk.ReceiverDispatcher.InnerReceiver,注册广播时创建
             receiver.performReceive(intent, resultCode, dataStr, extras, ordered,
                     sticky, sendingUser);
         }

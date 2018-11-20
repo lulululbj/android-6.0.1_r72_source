@@ -1472,13 +1472,13 @@ public class IntentFilter implements Parcelable {
      */
     public final int match(String action, String type, String scheme,
             Uri data, Set<String> categories, String logTag) {
-        if (action != null && !matchAction(action)) {
+        if (action != null && !matchAction(action)) { //action不匹配
             if (false) Log.v(
                 logTag, "No matching action " + action + " for " + this);
             return NO_MATCH_ACTION;
         }
 
-        int dataMatch = matchData(type, scheme, data);
+        int dataMatch = matchData(type, scheme, data); //type或data不匹配 
         if (dataMatch < 0) {
             if (false) {
                 if (dataMatch == NO_MATCH_TYPE) {
@@ -1493,7 +1493,7 @@ public class IntentFilter implements Parcelable {
             return dataMatch;
         }
 
-        String categoryMismatch = matchCategories(categories);
+        String categoryMismatch = matchCategories(categories); //category不匹配
         if (categoryMismatch != null) {
             if (false) {
                 Log.v(logTag, "No matching category " + categoryMismatch + " for " + this);

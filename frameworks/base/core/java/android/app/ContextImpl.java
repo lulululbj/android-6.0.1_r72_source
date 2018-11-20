@@ -774,6 +774,7 @@ class ContextImpl extends Context {
         String resolvedType = intent.resolveTypeIfNeeded(getContentResolver());
         try {
             intent.prepareToLeaveProcess();
+			//调用AMP.broadcastIntent()
             ActivityManagerNative.getDefault().broadcastIntent(
                     mMainThread.getApplicationThread(), intent, resolvedType, null,
                     Activity.RESULT_OK, null, null, null, AppOpsManager.OP_NONE, null, false, false,
@@ -1177,8 +1178,10 @@ class ContextImpl extends Context {
         if (receiver != null) {
             if (mPackageInfo != null && context != null) {
                 if (scheduler == null) {
+					// 将主线程的handler赋给scheduler
                     scheduler = mMainThread.getHandler();
                 }
+				// 获取IIntentReceiver对象
                 rd = mPackageInfo.getReceiverDispatcher(
                     receiver, context, scheduler,
                     mMainThread.getInstrumentation(), true);
@@ -1191,6 +1194,7 @@ class ContextImpl extends Context {
             }
         }
         try {
+			// 调用AMP.registerReceiver方法
             return ActivityManagerNative.getDefault().registerReceiver(
                     mMainThread.getApplicationThread(), mBasePackageName,
                     rd, filter, broadcastPermission, userId);

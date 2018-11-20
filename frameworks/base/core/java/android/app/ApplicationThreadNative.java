@@ -398,7 +398,7 @@ public abstract class ApplicationThreadNative extends Binder
             int processState = data.readInt();
             scheduleRegisteredReceiver(receiver, intent,
                     resultCode, dataStr, extras, ordered, sticky, sendingUser, processState);
-            return true;
+            return true; // 进入AT.scheduleRegisteredReceiver()方法
         }
 
         case SCHEDULE_LOW_MEMORY_TRANSACTION:

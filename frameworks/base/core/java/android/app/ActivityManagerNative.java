@@ -3024,7 +3024,7 @@ class ActivityManagerProxy implements IActivityManager
         }
         reply.recycle();
         data.recycle();
-        return intent;
+        return intent; // 进入 AMS.registerReceiver
     }
     public void unregisterReceiver(IIntentReceiver receiver) throws RemoteException
     {
@@ -3064,7 +3064,7 @@ class ActivityManagerProxy implements IActivityManager
         int res = reply.readInt();
         reply.recycle();
         data.recycle();
-        return res;
+        return res; //进入AMS.broadcastIntent()
     }
     public void unbroadcastIntent(IApplicationThread caller, Intent intent, int userId)
             throws RemoteException

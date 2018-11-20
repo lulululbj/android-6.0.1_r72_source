@@ -44,9 +44,9 @@ import java.util.Set;
 final class BroadcastRecord extends Binder {
     final Intent intent;    // the original intent that generated us
     final ComponentName targetComp; // original component name set on the intent
-    final ProcessRecord callerApp; // process that sent this
-    final String callerPackage; // who sent this
-    final int callingPid;   // the pid of who sent this
+    final ProcessRecord callerApp; // process that sent this 广播发送者所在进程
+    final String callerPackage; // who sent this 广播发送者所在包名
+    final int callingPid;   // the pid of who sent this 广播发送者pid
     final int callingUid;   // the uid of who sent this
     final boolean ordered;  // serialize the send to receivers?
     final boolean sticky;   // originated from existing sticky data?
@@ -56,13 +56,13 @@ final class BroadcastRecord extends Binder {
     final String[] requiredPermissions; // permissions the caller has required
     final int appOp;        // an app op that is associated with this broadcast
     final BroadcastOptions options; // BroadcastOptions supplied by caller
-    final List receivers;   // contains BroadcastFilter and ResolveInfo
+    final List receivers;   // contains BroadcastFilter and ResolveInfo 包含动态注册的BroadcastFilter和静态注册的ResolveInfo
     IIntentReceiver resultTo; // who receives final result if non-null
-    long enqueueClockTime;  // the clock time the broadcast was enqueued
-    long dispatchTime;      // when dispatch started on this set of receivers
-    long dispatchClockTime; // the clock time the dispatch started
-    long receiverTime;      // when current receiver started for timeouts.
-    long finishTime;        // when we finished the broadcast.
+    long enqueueClockTime;  // the clock time the broadcast was enqueued 入队列时间
+    long dispatchTime;      // when dispatch started on this set of receivers 分发时间
+    long dispatchClockTime; // the clock time the dispatch started 分发时间
+    long receiverTime;      // when current receiver started for timeouts. 接收时间
+    long finishTime;        // when we finished the broadcast. 广播完成时间
     int resultCode;         // current result code value.
     String resultData;      // current result data value.
     Bundle resultExtras;    // current result extra data values.
