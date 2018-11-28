@@ -1633,7 +1633,7 @@ public final class ActivityManagerService extends ActivityManagerNative
                     performAppGcsIfAppropriateLocked();
                 }
             } break;
-            case SERVICE_TIMEOUT_MSG: {
+            case SERVICE_TIMEOUT_MSG: { // 服务超时
                 if (mDidDexOpt) {
                     mDidDexOpt = false;
                     Message nmsg = mHandler.obtainMessage(SERVICE_TIMEOUT_MSG);
@@ -4769,6 +4769,7 @@ public final class ActivityManagerService extends ActivityManagerNative
      */
     public static File dumpStackTraces(boolean clearTraces, ArrayList<Integer> firstPids,
             ProcessCpuTracker processCpuTracker, SparseArray<Boolean> lastPids, String[] nativeProcs) {
+        // 默认为data/anr/traces.txt
         String tracesPath = SystemProperties.get("dalvik.vm.stack-trace-file", null);
         if (tracesPath == null || tracesPath.length() == 0) {
             return null;
@@ -4785,6 +4786,7 @@ public final class ActivityManagerService extends ActivityManagerNative
             }
             FileUtils.setPermissions(tracesDir.getPath(), 0775, -1, -1);  // drwxrwxr-x
 
+			//当clearTraces，则删除已存在的traces文件
             if (clearTraces && tracesFile.exists()) tracesFile.delete();
             tracesFile.createNewFile();
             FileUtils.setPermissions(tracesFile.getPath(), 0666, -1, -1); // -rw-rw-rw-
@@ -4793,6 +4795,7 @@ public final class ActivityManagerService extends ActivityManagerNative
             return null;
         }
 
+		// 输出trace内容
         dumpStackTraces(tracesPath, firstPids, processCpuTracker, lastPids, nativeProcs);
         return tracesFile;
     }
@@ -4810,11 +4813,13 @@ public final class ActivityManagerService extends ActivityManagerNative
             observer.startWatching();
 
             // First collect all of the stacks of the most important pids.
+            // 首先，获取最重要进程的stacks
             if (firstPids != null) {
                 try {
                     int num = firstPids.size();
                     for (int i = 0; i < num; i++) {
                         synchronized (observer) {
+							// 向目标进程发送signal来输出traces
                             Process.sendSignal(firstPids.get(i), Process.SIGNAL_QUIT);
                             observer.wait(200);  // Wait for write-close, give up after 200msec
                         }
@@ -4825,10 +4830,12 @@ public final class ActivityManagerService extends ActivityManagerNative
             }
 
             // Next collect the stacks of the native pids
+            // 下一步，获取native进程的stacks
             if (nativeProcs != null) {
                 int[] pids = Process.getPidsForCommands(nativeProcs);
                 if (pids != null) {
                     for (int pid : pids) {
+						// 输出native进程的trace
                         Debug.dumpNativeBacktraceToFile(pid, tracesPath);
                     }
                 }
@@ -4848,6 +4855,7 @@ public final class ActivityManagerService extends ActivityManagerNative
                 processCpuTracker.update();
 
                 // We'll take the stack crawls of just the top apps using CPU.
+                // 从lastPids中选取CPU使用率 top 5的进程，输出这些进程的stacks
                 final int N = processCpuTracker.countWorkingStats();
                 int numProcs = 0;
                 for (int i=0; i<N && numProcs<5; i++) {
@@ -4968,7 +4976,7 @@ public final class ActivityManagerService extends ActivityManagerNative
 
         long anrTime = SystemClock.uptimeMillis();
         if (MONITOR_CPU_USAGE) {
-            updateCpuStatsNow();
+            updateCpuStatsNow(); //第一次 更新cpu统计信息
         }
 
         synchronized (this) {
@@ -4989,16 +4997,20 @@ public final class ActivityManagerService extends ActivityManagerNative
             app.notResponding = true;
 
             // Log the ANR to the event log.
+            // 记录ANR到EventLog
             EventLog.writeEvent(EventLogTags.AM_ANR, app.userId, app.pid,
                     app.processName, app.info.flags, annotation);
 
             // Dump thread traces as quickly as we can, starting with "interesting" processes.
+            // 将当前进程添加到firstPids
             firstPids.add(app.pid);
 
+			// 将当前进程添加到firstPids
             int parentPid = app.pid;
             if (parent != null && parent.app != null && parent.app.pid > 0) parentPid = parent.app.pid;
             if (parentPid != app.pid) firstPids.add(parentPid);
 
+			//将system_server进程添加到firstPids
             if (MY_PID != app.pid && MY_PID != parentPid) firstPids.add(MY_PID);
 
             for (int i = mLruProcesses.size() - 1; i >= 0; i--) {
@@ -5007,9 +5019,9 @@ public final class ActivityManagerService extends ActivityManagerNative
                     int pid = r.pid;
                     if (pid > 0 && pid != app.pid && pid != parentPid && pid != MY_PID) {
                         if (r.persistent) {
-                            firstPids.add(pid);
+                            firstPids.add(pid); //将persistent进程添加到firstPids
                         } else {
-                            lastPids.put(pid, Boolean.TRUE);
+                            lastPids.put(pid, Boolean.TRUE); //其他进程添加到lastPids
                         }
                     }
                 }
@@ -5032,29 +5044,33 @@ public final class ActivityManagerService extends ActivityManagerNative
             info.append("Parent: ").append(parent.shortComponentName).append("\n");
         }
 
+		// 创建CPU tracker对象
         final ProcessCpuTracker processCpuTracker = new ProcessCpuTracker(true);
-
+		// 输出traces信息
         File tracesFile = dumpStackTraces(true, firstPids, processCpuTracker, lastPids,
                 NATIVE_STACKS_OF_INTEREST);
 
         String cpuInfo = null;
         if (MONITOR_CPU_USAGE) {
-            updateCpuStatsNow();
+            updateCpuStatsNow(); //第二次更新cpu统计信息
+            // 记录当前各个进程的CPU使用情况
             synchronized (mProcessCpuTracker) {
                 cpuInfo = mProcessCpuTracker.printCurrentState(anrTime);
             }
+			// 记录当前CPU负载情况
             info.append(processCpuTracker.printCurrentLoad());
             info.append(cpuInfo);
         }
-
+		//记录从anr时间开始的Cpu使用情况
         info.append(processCpuTracker.printCurrentState(anrTime));
-
+		//输出当前ANR的reason，以及CPU使用率、负载信息
         Slog.e(TAG, info.toString());
         if (tracesFile == null) {
             // There is no trace file, so dump (only) the alleged culprit's threads to the log
             Process.sendSignal(app.pid, Process.SIGNAL_QUIT);
         }
 
+		//将traces文件和CPU使用率信息保存到dropbox，即data/system/dropbox目录
         addErrorToDropBox("anr", app, app.processName, activity, parent, annotation,
                 cpuInfo, tracesFile, null);
 
@@ -5064,7 +5080,7 @@ public final class ActivityManagerService extends ActivityManagerNative
                 int res = mController.appNotResponding(app.processName, app.pid, info.toString());
                 if (res != 0) {
                     if (res < 0 && app.pid != MY_PID) {
-                        app.kill("anr", true);
+                        app.kill("anr", true); //后台ANR的情况, 则直接杀掉
                     } else {
                         synchronized (this) {
                             mServices.scheduleServiceTimeoutLocked(app);
@@ -5091,12 +5107,14 @@ public final class ActivityManagerService extends ActivityManagerNative
             }
 
             // Set the app's notResponding state, and look up the errorReportReceiver
+            // 设置app的ANR状态，查询错误报告receiver
             makeAppNotRespondingLocked(app,
                     activity != null ? activity.shortComponentName : null,
                     annotation != null ? "ANR " + annotation : "ANR",
                     info.toString());
 
             // Bring up the infamous App Not Responding dialog
+            // 弹出ANR对话框
             Message msg = Message.obtain();
             HashMap<String, Object> map = new HashMap<String, Object>();
             msg.what = SHOW_NOT_RESPONDING_MSG;
@@ -5107,6 +5125,7 @@ public final class ActivityManagerService extends ActivityManagerNative
                 map.put("activity", activity);
             }
 
+			//向ui线程发送，内容为SHOW_NOT_RESPONDING_MSG的消息
             mUiHandler.sendMessage(msg);
         }
     }
@@ -6095,9 +6114,11 @@ public final class ActivityManagerService extends ActivityManagerNative
 
         mHandler.removeMessages(PROC_START_TIMEOUT_MSG, app);
 
+		//系统处于ready状态或者该app为FLAG_PERSISTENT进程则为true
         boolean normalMode = mProcessesReady || isAllowedWhileBooting(app.info);
         List<ProviderInfo> providers = normalMode ? generateApplicationProvidersLocked(app) : null;
 
+		//app进程存在正在启动中的provider,则超时10s后发送CONTENT_PROVIDER_PUBLISH_TIMEOUT_MSG消息
         if (providers != null && checkAppInLaunchingProvidersLocked(app)) {
             Message msg = mHandler.obtainMessage(CONTENT_PROVIDER_PUBLISH_TIMEOUT_MSG);
             msg.obj = app;
@@ -9962,12 +9983,13 @@ public final class ActivityManagerService extends ActivityManagerNative
                         }
                     }
                     if (wasInLaunchingProviders) {
+						//成功publish则移除该消息
                         mHandler.removeMessages(CONTENT_PROVIDER_PUBLISH_TIMEOUT_MSG, r);
                     }
                     synchronized (dst) {
                         dst.provider = src.provider;
                         dst.proc = r;
-                        dst.notifyAll();
+                        dst.notifyAll(); 
                     }
                     updateOomAdjLocked(r);
                     maybeUpdateProviderUsageStatsLocked(r, src.info.packageName,
@@ -15722,6 +15744,7 @@ public final class ActivityManagerService extends ActivityManagerNative
                 if (!alwaysBad && !app.bad && cpr.hasConnectionOrHandle()) {
                     restart = true;
                 } else {
+               		//移除死亡的provider
                     removeDyingProviderLocked(app, cpr, true);
                 }
             }

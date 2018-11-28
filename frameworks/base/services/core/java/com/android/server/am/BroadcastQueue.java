@@ -169,7 +169,7 @@ public final class BroadcastQueue {
                 } break;
                 case BROADCAST_TIMEOUT_MSG: {
                     synchronized (mService) {
-                        broadcastTimeoutLocked(true);
+                        broadcastTimeoutLocked(true); // 广播超时
                     }
                 } break;
                 case SCHEDULE_TEMP_WHITELIST_MSG: {
@@ -801,7 +801,7 @@ public final class BroadcastQueue {
                     }
 
                     if (DEBUG_BROADCAST) Slog.v(TAG_BROADCAST, "Cancelling BROADCAST_TIMEOUT_MSG");
-					//取消BROADCAST_TIMEOUT_MSG消息
+					//取消BROADCAST_TIMEOUT_MSG消息,拆炸弹
                     cancelBroadcastTimeoutLocked();
 
                     if (DEBUG_BROADCAST_LIGHT) Slog.v(TAG_BROADCAST,
@@ -833,7 +833,8 @@ public final class BroadcastQueue {
                 if (DEBUG_BROADCAST) Slog.v(TAG_BROADCAST,
                         "Submitting BROADCAST_TIMEOUT_MSG ["
                         + mQueueName + "] for " + r + " at " + timeoutTime);
-                setBroadcastTimeoutLocked(timeoutTime); //设置广播超时时间，发送BROADCAST_TIMEOUT_MSG
+				//埋炸弹，设置广播超时时间，发送BROADCAST_TIMEOUT_MSG
+                setBroadcastTimeoutLocked(timeoutTime); 
             }
 
             final BroadcastOptions brOptions = r.options;
@@ -1161,7 +1162,7 @@ public final class BroadcastQueue {
                 // Only process broadcast timeouts if the system is ready. That way
                 // PRE_BOOT_COMPLETED broadcasts can't timeout as they are intended
                 // to do heavy lifting for system up.
-                return;
+                return; //当系统还没有准备就绪时，广播处理流程中不存在广播超时
             }
 
             long timeoutTime = r.receiverTime + mTimeoutPeriod;
@@ -1174,6 +1175,7 @@ public final class BroadcastQueue {
                         "Premature timeout ["
                         + mQueueName + "] @ " + now + ": resetting BROADCAST_TIMEOUT_MSG for "
                         + timeoutTime);
+				//如果当前正在执行的receiver没有超时，则重新设置广播超时
                 setBroadcastTimeoutLocked(timeoutTime);
                 return;
             }
@@ -1181,6 +1183,7 @@ public final class BroadcastQueue {
 
         BroadcastRecord br = mOrderedBroadcasts.get(0);
         if (br.state == BroadcastRecord.WAITING_SERVICES) {
+			// 广播已经处理完成，但需要等待已启动service执行完成。当等待足够时间，则处理下一条广播
             // In this case the broadcast had already finished, but we had decided to wait
             // for started services to finish as well before going on.  So if we have actually
             // waited long enough time timeout the broadcast, let's give up on the whole thing
@@ -1196,6 +1199,7 @@ public final class BroadcastQueue {
         Slog.w(TAG, "Timeout of broadcast " + r + " - receiver=" + r. receiver
                 + ", started " + (now - r.receiverTime) + "ms ago");
         r.receiverTime = now;
+		//当前BroadcastRecord的anr次数执行加1操作
         r.anrCount++;
 
         // Current receiver has passed its expiration date.
@@ -1239,6 +1243,7 @@ public final class BroadcastQueue {
         if (anrMessage != null) {
             // Post the ANR to the handler since we do not want to process ANRs while
             // potentially holding our lock.
+            // ANR
             mHandler.post(new AppNotResponding(app, anrMessage));
         }
     }

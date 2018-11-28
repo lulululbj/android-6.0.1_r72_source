@@ -1510,6 +1510,7 @@ public final class ActiveServices {
         r.restartTime = r.lastActivity = SystemClock.uptimeMillis();
 
         final boolean newService = app.services.add(r);
+		//发送delay消息(SERVICE_TIMEOUT_MSG)
         bumpServiceExecutingLocked(r, execInFg, "create");
         mAm.updateLruProcessLocked(app, false, null);
         mAm.updateOomAdjLocked();
@@ -1979,6 +1980,7 @@ public final class ActiveServices {
         serviceDoneExecutingLocked(r, true, true);
     }
 
+	// 当service启动完成，则移除服务超时消息SERVICE_TIMEOUT_MSG
     private void serviceDoneExecutingLocked(ServiceRecord r, boolean inDestroying,
             boolean finishing) {
         if (DEBUG_SERVICE) Slog.v(TAG_SERVICE, "<<< DONE EXECUTING " + r
@@ -1994,6 +1996,7 @@ public final class ActiveServices {
                 r.app.execServicesFg = false;
                 r.app.executingServices.remove(r);
                 if (r.app.executingServices.size() == 0) {
+					//当前服务所在进程中没有正在执行的service
                     if (DEBUG_SERVICE || DEBUG_SERVICE_EXECUTING) Slog.v(TAG_SERVICE_EXECUTING,
                             "No more executingServices of " + r.shortName);
                     mAm.mHandler.removeMessages(ActivityManagerService.SERVICE_TIMEOUT_MSG, r.app);
@@ -2545,6 +2548,7 @@ public final class ActiveServices {
         }
 
         if (anrMessage != null) {
+			// ANR
             mAm.appNotResponding(proc, null, null, false, anrMessage);
         }
     }
@@ -2557,6 +2561,7 @@ public final class ActiveServices {
         Message msg = mAm.mHandler.obtainMessage(
                 ActivityManagerService.SERVICE_TIMEOUT_MSG);
         msg.obj = proc;
+		// 当超时后仍没有remove该SERVICE_TIMEOUT_MSG消息，则执行service Timeout流程
         mAm.mHandler.sendMessageAtTime(msg,
                 proc.execServicesFg ? (now+SERVICE_TIMEOUT) : (now+ SERVICE_BACKGROUND_TIMEOUT));
     }

@@ -2913,6 +2913,7 @@ public final class ActivityThread {
             service.onCreate();
             mServices.put(data.token, service);
             try {
+				// 拆除炸弹引线
                 ActivityManagerNative.getDefault().serviceDoneExecuting(
                         data.token, SERVICE_DONE_EXECUTING_ANON, 0, 0);
             } catch (RemoteException e) {
