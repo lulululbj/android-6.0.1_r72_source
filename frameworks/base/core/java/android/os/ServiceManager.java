@@ -30,12 +30,16 @@ public final class ServiceManager {
     private static IServiceManager sServiceManager;
     private static HashMap<String, IBinder> sCache = new HashMap<String, IBinder>();
 
+	/*
+	 * 采用单例模式，返回的是 ServiceManagerProxy对象
+	 */
     private static IServiceManager getIServiceManager() {
         if (sServiceManager != null) {
             return sServiceManager;
         }
 
         // Find the service manager
+        // 等价于ServiceManagerNative.asInterface(new BinderProxy())
         sServiceManager = ServiceManagerNative.asInterface(BinderInternal.getContextObject());
         return sServiceManager;
     }
@@ -48,11 +52,11 @@ public final class ServiceManager {
      */
     public static IBinder getService(String name) {
         try {
-            IBinder service = sCache.get(name);
+            IBinder service = sCache.get(name); // 先从缓存中查找
             if (service != null) {
                 return service;
             } else {
-                return getIServiceManager().getService(name);
+                return getIServiceManager().getService(name); // 调用SMP.getService()方法
             }
         } catch (RemoteException e) {
             Log.e(TAG, "error in getService", e);
@@ -69,6 +73,7 @@ public final class ServiceManager {
      */
     public static void addService(String name, IBinder service) {
         try {
+			//先获取SMP对象，再执行注册服务操作
             getIServiceManager().addService(name, service, false);
         } catch (RemoteException e) {
             Log.e(TAG, "error in addService", e);

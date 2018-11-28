@@ -120,7 +120,9 @@ class ServiceManagerProxy implements IServiceManager {
         Parcel reply = Parcel.obtain();
         data.writeInterfaceToken(IServiceManager.descriptor);
         data.writeString(name);
+		//mRemote为BinderProxy对象
         mRemote.transact(GET_SERVICE_TRANSACTION, data, reply, 0);
+		//从reply里面解析出获取的IBinder对象
         IBinder binder = reply.readStrongBinder();
         reply.recycle();
         data.recycle();
@@ -145,8 +147,9 @@ class ServiceManagerProxy implements IServiceManager {
         Parcel reply = Parcel.obtain();
         data.writeInterfaceToken(IServiceManager.descriptor);
         data.writeString(name);
-        data.writeStrongBinder(service);
+        data.writeStrongBinder(service); // 最终等价于parcel->writeStrongBinder(new JavaBBinder(env, obj))
         data.writeInt(allowIsolated ? 1 : 0);
+		//mRemote为BinderProxy
         mRemote.transact(ADD_SERVICE_TRANSACTION, data, reply, 0);
         reply.recycle();
         data.recycle();

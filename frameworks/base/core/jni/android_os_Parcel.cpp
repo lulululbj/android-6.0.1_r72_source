@@ -297,6 +297,7 @@ static void android_os_Parcel_writeString(JNIEnv* env, jclass clazz, jlong nativ
 
 static void android_os_Parcel_writeStrongBinder(JNIEnv* env, jclass clazz, jlong nativePtr, jobject object)
 {
+	//将java层Parcel转为native层Parcel
     Parcel* parcel = reinterpret_cast<Parcel*>(nativePtr);
     if (parcel != NULL) {
         const status_t err = parcel->writeStrongBinder(ibinderForJavaObject(env, object));

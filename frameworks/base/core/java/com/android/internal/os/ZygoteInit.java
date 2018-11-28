@@ -629,7 +629,7 @@ public class ZygoteInit {
 
             closeServerSocket();
         } catch (MethodAndArgsCaller caller) {
-            caller.run();
+            caller.run(); //此处通过反射,会调用SystemServer.main()方法
         } catch (RuntimeException ex) {
             Log.e(TAG, "Zygote died with exception", ex);
             closeServerSocket();
