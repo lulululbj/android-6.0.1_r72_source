@@ -458,6 +458,7 @@ public class ZygoteInit {
 
             /*
              * Pass the remaining arguments to SystemServer.
+             * system_server故进入此分支
              */
             RuntimeInit.zygoteInit(parsedArgs.targetSdkVersion, parsedArgs.remainingArgs, cl);
         }
@@ -535,7 +536,7 @@ public class ZygoteInit {
             ZygoteConnection.applyInvokeWithSystemProperty(parsedArgs);
 
             /* Request to fork the system server process 
- 			 * fork子进程，用于运行system_server
+ 			 * fork子进程，该进程是system_server进程
 			 */
             pid = Zygote.forkSystemServer(
                     parsedArgs.uid, parsedArgs.gid,
@@ -745,7 +746,7 @@ public class ZygoteInit {
 
         public void run() {
             try {
-				//根据传递过来的参数，通过反射机制调用方法
+				//根据传递过来的参数，通过反射机制调用方法(SystemServer.main())
                 mMethod.invoke(null, new Object[] { mArgs });
             } catch (IllegalAccessException ex) {
                 throw new RuntimeException(ex);

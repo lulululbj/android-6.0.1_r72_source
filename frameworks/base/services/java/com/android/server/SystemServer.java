@@ -323,6 +323,7 @@ public final class SystemServer {
         // 创建system_server进程的上下文信息
         ActivityThread activityThread = ActivityThread.systemMain();
         mSystemContext = activityThread.getSystemContext();
+		// 设置主题
         mSystemContext.setTheme(android.R.style.Theme_DeviceDefault_Light_DarkActionBar);
     }
 
@@ -1051,9 +1052,9 @@ public final class SystemServer {
             }
         }
 
+		// phase 480 && 500
         // Needed by DevicePolicyManager for initialization
         mSystemServiceManager.startBootPhase(SystemService.PHASE_LOCK_SETTINGS_READY);
-
         mSystemServiceManager.startBootPhase(SystemService.PHASE_SYSTEM_SERVICES_READY);
 
         try {
@@ -1125,6 +1126,7 @@ public final class SystemServer {
             @Override
             public void run() {
                 Slog.i(TAG, "Making services ready");
+				//phase550
                 mSystemServiceManager.startBootPhase(
                         SystemService.PHASE_ACTIVITY_MANAGER_READY);
 
@@ -1174,6 +1176,7 @@ public final class SystemServer {
                 }
                 Watchdog.getInstance().start();
 
+				// phase600
                 // It is now okay to let the various system services start their
                 // third party code...
                 mSystemServiceManager.startBootPhase(

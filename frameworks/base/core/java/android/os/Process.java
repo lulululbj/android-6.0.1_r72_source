@@ -577,6 +577,8 @@ public class Process {
             // Always read the entire result from the input stream to avoid leaving
             // bytes in the stream for future process starts to accidentally stumble
             // upon.
+            // 等待socket服务端（即zygote）返回新创建的进程pid;
+        	// 对于等待时长问题，Google正在考虑此处是否应该有一个timeout，但目前是没有的。
             result.pid = inputStream.readInt();
             result.usingWrapper = inputStream.readBoolean();
 
@@ -727,6 +729,7 @@ public class Process {
     private static ZygoteState openZygoteSocketIfNeeded(String abi) throws ZygoteStartFailedEx {
         if (primaryZygoteState == null || primaryZygoteState.isClosed()) {
             try {
+				// 向主zygote发起connect()操作
                 primaryZygoteState = ZygoteState.connect(ZYGOTE_SOCKET);
             } catch (IOException ioe) {
                 throw new ZygoteStartFailedEx("Error connecting to primary zygote", ioe);
@@ -738,6 +741,7 @@ public class Process {
         }
 
         // The primary zygote didn't match. Try the secondary.
+        // 当主zygote没能匹配成功，则采用第二个zygote，发起connect()操作
         if (secondaryZygoteState == null || secondaryZygoteState.isClosed()) {
             try {
             secondaryZygoteState = ZygoteState.connect(SECONDARY_ZYGOTE_SOCKET);

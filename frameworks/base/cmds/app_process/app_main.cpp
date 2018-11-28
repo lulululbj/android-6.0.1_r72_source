@@ -92,7 +92,7 @@ public:
     {
         sp<ProcessState> proc = ProcessState::self();
         ALOGV("App process: starting thread pool.\n");
-        proc->startThreadPool();
+        proc->startThreadPool(); // 启动新binder线程
     }
 
     virtual void onExit(int code)

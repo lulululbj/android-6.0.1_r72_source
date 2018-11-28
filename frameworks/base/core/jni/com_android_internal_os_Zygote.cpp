@@ -598,6 +598,7 @@ static pid_t ForkAndSpecializeCommon(JNIEnv* env, uid_t uid, gid_t gid, jintArra
     }
   } else if (pid > 0) {
     // the parent process
+    // 进入父进程，即system_server
 
 #ifdef ENABLE_SCHED_BOOST
     // unset scheduler knob
@@ -639,6 +640,7 @@ static jint com_android_internal_os_Zygote_nativeForkSystemServer(
                                       NULL, NULL);
   if (pid > 0) {
       // The zygote process checks whether the child process has died or not.
+      // zygote进程，检测system_server进程是否创建
       ALOGI("System server process %d has been created", pid);
       gSystemServerPid = pid;
       // There is a slight window that the system server process has crashed

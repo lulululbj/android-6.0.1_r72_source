@@ -726,7 +726,7 @@ class ZygoteConnection {
          * socket connections, and substituted /dev/null in their place.  The LocalSocket
          * objects still need to be closed properly.
          */
-
+		// 关闭Zygote的socket两端的连接
         closeSocket();
         ZygoteInit.closeServerSocket();
 
@@ -746,17 +746,19 @@ class ZygoteConnection {
         }
 
         if (parsedArgs.niceName != null) {
-            Process.setArgV0(parsedArgs.niceName);
+            Process.setArgV0(parsedArgs.niceName); // 设置进程名
         }
 
         // End of the postFork event.
         Trace.traceEnd(Trace.TRACE_TAG_ACTIVITY_MANAGER);
         if (parsedArgs.invokeWith != null) {
+			//据说这是用于检测进程内存泄露或溢出时场景而设计，后续还需要进一步分析
             WrapperInit.execApplication(parsedArgs.invokeWith,
                     parsedArgs.niceName, parsedArgs.targetSdkVersion,
                     VMRuntime.getCurrentInstructionSet(),
                     pipeFd, parsedArgs.remainingArgs);
         } else {
+			//执行目标类的main()方法
             RuntimeInit.zygoteInit(parsedArgs.targetSdkVersion,
                     parsedArgs.remainingArgs, null /* classLoader */);
         }

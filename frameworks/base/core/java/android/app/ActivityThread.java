@@ -5448,10 +5448,11 @@ public final class ActivityThread {
 
         Process.setArgV0("<pre-initialized>");
 
+		// 创建主线程Looper
         Looper.prepareMainLooper();
 
         ActivityThread thread = new ActivityThread();
-        thread.attach(false);
+        thread.attach(false); // attach到系统进程
 
         if (sMainThreadHandler == null) {
             sMainThreadHandler = thread.getHandler();
@@ -5464,7 +5465,7 @@ public final class ActivityThread {
 
         // End of event ActivityThreadMain.
         Trace.traceEnd(Trace.TRACE_TAG_ACTIVITY_MANAGER);
-        Looper.loop();
+        Looper.loop(); // 主线程进入循环状态
 
         throw new RuntimeException("Main thread loop unexpectedly exited");
     }

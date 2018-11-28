@@ -149,6 +149,7 @@ public final class Zygote {
             int[][] rlimits, long permittedCapabilities, long effectiveCapabilities);
 
     private static void callPostForkChildHooks(int debugFlags, String instructionSet) {
+		//调用ZygoteHooks.postForkChild()
         VM_HOOKS.postForkChild(debugFlags, instructionSet);
     }
 
